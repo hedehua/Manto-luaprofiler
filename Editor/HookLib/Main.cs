@@ -38,7 +38,7 @@ using EasyHook;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     [Serializable]
     public class HookParameter

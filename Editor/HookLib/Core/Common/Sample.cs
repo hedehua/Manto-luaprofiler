@@ -38,7 +38,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public abstract class NetBase
     {

@@ -38,7 +38,7 @@ __________#_______####_______####______________
 
 using System;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     using DebugS = System.Diagnostics.Debug;
     using NumberStyles = System.Globalization.NumberStyles;

@@ -35,7 +35,7 @@ __________#_______####_______####______________
 using System;
 using System.Collections.Generic;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public static class Parse
     {

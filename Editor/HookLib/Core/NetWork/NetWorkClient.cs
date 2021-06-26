@@ -33,7 +33,7 @@ __________#_______####_______####______________
 * ==============================================================================
 */
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     using System;
     using System.Collections.Generic;

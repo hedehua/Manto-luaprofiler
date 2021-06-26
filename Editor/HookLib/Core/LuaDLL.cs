@@ -43,7 +43,7 @@ using EasyHook;
 using System.IO;
 
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     #region 通用结构体
     public enum LuaTypes

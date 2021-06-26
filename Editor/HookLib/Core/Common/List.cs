@@ -35,7 +35,7 @@ __________#_______####_______####______________
 
 using System;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public class MList<T>
     {

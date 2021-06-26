@@ -1,6 +1,6 @@
 ﻿using AdvancedDataGridView;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     partial class ProfilerForm
     {
@@ -33,6 +33,7 @@ namespace MikuLuaProfiler
             this.components = new System.ComponentModel.Container();
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ProfilerForm));
+            this.chart1 = new System.Windows.Forms.DataVisualization.Charting.Chart();
             this.tvTaskList = new AdvancedDataGridView.TreeGridView();
             this.imageStrip = new System.Windows.Forms.ImageList(this.components);
             this.injectButton = new System.Windows.Forms.Button();
@@ -54,13 +55,51 @@ namespace MikuLuaProfiler
             ((System.ComponentModel.ISupportInitialize)(this.tvTaskList)).BeginInit();
             this.SuspendLayout();
             // 
+            // chart1
+            // 
+            this.chart1.Location = new System.Drawing.Point(1, 32);
+            this.chart1.Name = "chart1";
+            this.chart1.Size = new System.Drawing.Size(1416, 128);
+            this.chart1.TabIndex = 9;
+            this.chart1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+
+            System.Windows.Forms.DataVisualization.Charting.ChartArea area = this.chart1.ChartAreas.Add("ChartArea");
+
+            this.chart1.MouseWheel += Chart1_MouseWheel;
+            this.chart1.Series.Add("GameThread");
+
+            area.InnerPlotPosition.Auto = true;
+            
+            area.CursorX.AutoScroll = true;
+            area.CursorX.IsUserEnabled = true;
+            area.CursorX.IsUserSelectionEnabled = false;
+            //area.AlignmentStyle = System.Windows.Forms.DataVisualization.Charting.AreaAlignmentStyles.All ;
+
+            area.AxisX.MinorGrid.LineColor = System.Drawing.Color.LightGray; ;
+            area.AxisX.MajorGrid.LineColor = System.Drawing.Color.LightGray;
+            area.AxisX.ScrollBar.Enabled = true;
+            area.AxisX.ScaleView.Zoomable = true;
+            
+            area.AxisX.ScaleView.Position = 0;
+            area.AxisX.ScaleView.Size = 10;
+            area.AxisX.ScrollBar.ButtonColor = System.Drawing.Color.LightGray;
+            area.AxisX.ScrollBar.Size = 8;
+            area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.SmallScroll;
+            area.AxisX.ScrollBar.IsPositionedInside = false;
+            area.AxisX.IsLabelAutoFit = false;
+
+            area.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
+            area.AxisY.LabelStyle.Enabled = false;
+
             // tvTaskList
             // 
             this.tvTaskList.AllowUserToAddRows = false;
             this.tvTaskList.AllowUserToDeleteRows = false;
             this.tvTaskList.AllowUserToOrderColumns = true;
-            this.tvTaskList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
-            | System.Windows.Forms.AnchorStyles.Left) 
+            this.tvTaskList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tvTaskList.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
             this.tvTaskList.BackgroundColor = System.Drawing.Color.White;
@@ -77,13 +116,13 @@ namespace MikuLuaProfiler
             this.totalCalls});
             this.tvTaskList.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.tvTaskList.ImageList = null;
-            this.tvTaskList.Location = new System.Drawing.Point(1, 32);
+            this.tvTaskList.Location = new System.Drawing.Point(1, 32+128);
             this.tvTaskList.Name = "tvTaskList";
             this.tvTaskList.RowHeadersVisible = false;
             this.tvTaskList.RowHeadersWidth = 20;
             this.tvTaskList.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.tvTaskList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.tvTaskList.Size = new System.Drawing.Size(1416, 546);
+            this.tvTaskList.Size = new System.Drawing.Size(1416, 546-130);
             this.tvTaskList.TabIndex = 0;
             // 
             // imageStrip
@@ -236,6 +275,7 @@ namespace MikuLuaProfiler
             this.Controls.Add(this.processCom);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.injectButton);
+            this.Controls.Add(this.chart1);
             this.Controls.Add(this.tvTaskList);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -260,6 +300,7 @@ namespace MikuLuaProfiler
         private System.Windows.Forms.Button searchBtn;
         private System.Windows.Forms.Button button1;
         private System.Windows.Forms.Timer timer1;
+        private System.Windows.Forms.DataVisualization.Charting.Chart chart1;
         private System.Windows.Forms.DataGridViewImageColumn attachmentColumn;
         private TreeGridColumn overview;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalLuaMemory;

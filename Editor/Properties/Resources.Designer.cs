@@ -8,7 +8,7 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace MikuLuaProfiler.Properties {
+namespace SparrowLuaProfiler.Properties {
     using System;
     
     

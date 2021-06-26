@@ -39,7 +39,7 @@ __________#_______####_______####______________
 using System;
 using System.Collections.Generic;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public class ObjectPool<T> where T : class, new()
     {

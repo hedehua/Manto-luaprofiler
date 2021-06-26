@@ -12,8 +12,9 @@ using System.Runtime.Remoting;
 using System.Linq;
 using System.Collections.Generic;
 using System.Security.Cryptography;
+using System.Windows.Forms.DataVisualization.Charting;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public partial class ProfilerForm : Form
     {
@@ -52,6 +53,7 @@ namespace MikuLuaProfiler
 
         private void FillFormInfo()
         {
+
             foreach (var item in roots)
             {
                 TreeGridNode treeNode;
@@ -303,8 +305,20 @@ namespace MikuLuaProfiler
 
         #endregion
 
+        static int last = 0;
         private void Timer1_Tick(object sender, EventArgs e)
         {
+            // test data
+
+            System.Windows.Forms.DataVisualization.Charting.Series gameThreadSeries = this.chart1.Series["GameThread"];
+            gameThreadSeries.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line;
+            gameThreadSeries.IsValueShownAsLabel = true;
+            gameThreadSeries.MarkerStyle = System.Windows.Forms.DataVisualization.Charting.MarkerStyle.Square;
+            gameThreadSeries.Color = System.Drawing.Color.Red;
+            gameThreadSeries.BorderWidth = 1;
+            System.Random rd = new System.Random();
+            gameThreadSeries.Points.AddXY(last++, rd.Next(100));
+
             lock (queue)
             {
                 while (queue.Count > 0)
@@ -322,6 +336,33 @@ namespace MikuLuaProfiler
                     }
                 }
                 FillFormInfo();
+            }
+        }
+
+        static float ZoomScale = 0.01f;
+        private void Chart1_MouseWheel(object sender, MouseEventArgs e)
+        {
+            Chart chart = (Chart)sender;
+            Axis xAxis = chart.ChartAreas[0].AxisX;
+
+            {
+                double xMin = xAxis.ScaleView.ViewMinimum;
+                double xMax = xAxis.ScaleView.ViewMaximum;
+
+                if (e.Delta < 0)
+                {
+                    xAxis.ScaleView.ZoomReset();
+                }
+                else if (e.Delta > 0)
+                {
+
+                    double posXStart = xAxis.PixelPositionToValue(e.Location.X) - (xMax - xMin) / 2;
+                    double posXFinish = xAxis.PixelPositionToValue(e.Location.X) + (xMax - xMin) / 2;
+
+                    xAxis.ScaleView.Zoom(posXStart, posXFinish);
+
+                }
+
             }
         }
     }

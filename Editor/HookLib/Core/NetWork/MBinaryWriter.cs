@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public class MBinaryWriter : BinaryWriter
     {

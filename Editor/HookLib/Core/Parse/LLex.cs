@@ -37,7 +37,7 @@ using System.Collections.Generic;
 using System.Text;
 using NumberStyles = System.Globalization.NumberStyles;
 
-namespace MikuLuaProfiler
+namespace SparrowLuaProfiler
 {
     public enum TK
     {
