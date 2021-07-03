@@ -106,14 +106,6 @@ namespace SparrowLuaProfiler
         #endregion
 
         #region sample
-        public static void BeginSampleCSharp(string name)
-        {
-            BeginSample(_mainL, name);
-        }
-        public static void EndSampleCSharp()
-        {
-            EndSample(_mainL);
-        }
 
         public static long getcurrentTime
         {
@@ -124,16 +116,6 @@ namespace SparrowLuaProfiler
         }
         public static void BeginSample(IntPtr luaState, string name, bool needShow = false)
         {
-            //string message = string.Empty;
-            //for (int i = 0; i < beginSampleMemoryStack.Count; i++) 
-            //{
-            //    message += "\t";
-            //}
-            //message += "BeginSample";
-            //message += name;
-            //message += "\n";
-            //LuaDLL.print(message);
-
             if (!IsMainThread)
             {
                 return;
@@ -186,7 +168,7 @@ namespace SparrowLuaProfiler
                             popChilds[i].fahter = item;
                         }
                         popChilds.Clear();
-                        // TODO
+                     
                         NetWorkClient.SendMessage(item);
                     }
                     //item.Restore();
@@ -196,14 +178,6 @@ namespace SparrowLuaProfiler
         }
         public static void EndSample(IntPtr luaState)
         {
-            //string message = string.Empty;
-            //for (int i = 0; i < beginSampleMemoryStack.Count; i++)
-            //{
-            //    message += "\t";
-            //}
-            //message += "EndSample";
-            //message += "\n";
-            //LuaDLL.print(message);
             if (!IsMainThread)
             {
                 return;
@@ -245,8 +219,7 @@ namespace SparrowLuaProfiler
                 return;
             }
             sample.fahter = beginSampleMemoryStack.Count > 0 ? beginSampleMemoryStack.Peek() : null;
-            //UnityEngine.Debug.Log(sample.name);
-            LuaDLL.print(sample.name);
+         
             if (beginSampleMemoryStack.Count == 0)
             {
                 NetWorkClient.SendMessage(sample);

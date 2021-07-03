@@ -318,9 +318,9 @@ namespace SparrowLuaProfiler
 
         public static void print(string message ) 
         {
-           // wsprintf(message);
-           // MessageBox.Show(message);
-            File.AppendAllText("./profiler.txt", message + "\n");
+            // wsprintf(message);
+            // MessageBox.Show(message);
+            File.AppendAllText("./luaprofiler.log", string.Format("{0} {1}\n", DateTime.Now.ToLocalTime().ToString(), message));
         }
 
         public static void lua_pop(IntPtr luaState, int amount)
@@ -580,23 +580,34 @@ end
 
         private static void LuaHook(IntPtr luaState, IntPtr ar) 
         {
-            int ret = lua_getinfo(luaState, "nSlt", ar);
-            if (ret > 0) 
+            try
             {
-                Object structrue = Marshal.PtrToStructure(ar,typeof(lua_Debug));
-                lua_Debug debug = (lua_Debug)structrue;
-                
-                switch (debug.evt) 
+                int ret = lua_getinfo(luaState, "nSlt", ar);
+                if (ret > 0)
                 {
-                    case LUA_HOOKCALL:
-                        string message = string.Format("{1} {2} {3}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
-                        LuaProfiler.BeginSample(luaState, message, true);
-                        break;
-                    case LUA_HOOKRET:
-                        LuaProfiler.EndSample(luaState);
-                        break;
-                    default:break;
+                    Object structrue = Marshal.PtrToStructure(ar, typeof(lua_Debug));
+                    lua_Debug debug = (lua_Debug)structrue;
+
+                    switch (debug.evt)
+                    {
+                        case LUA_HOOKCALL:
+                            string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
+                            LuaProfiler.BeginSample(luaState, message, true);
+                            break;
+                        case LUA_HOOKRET:
+                            LuaProfiler.EndSample(luaState);
+                            break;
+                        default: break;
+                    }
                 }
+                else 
+                {
+                    print("lua_getinfo:" + ret);
+                }
+            }
+            catch (Exception e) 
+            {
+                print(e.ToString());
             }
         }
 
@@ -999,14 +1010,13 @@ end
             lock (m_Lock)
             {
                 IntPtr intPtr = luaL_newstate();
+                print(string.Format("luaL_newstate[{0}],hook:{1}", intPtr, isHook));
                 if (isHook)
                 {
                     LuaProfiler.mainL = intPtr;
-                    //      MikuLuaProfilerLuaProfilerWrap.__Register(intPtr);
                     int LuaDebugMask = LUA_MASKCALL | LUA_MASKRET;
                     lua_sethook(intPtr, LuaHook, LuaDebugMask, 0);
                 }
-                print("luaL_newstate " + intPtr);
                 return intPtr;
             }
         }
@@ -1048,7 +1058,7 @@ end
                     buff = ConvertByteArrayToPtr(buffer);
                     size = (IntPtr)buffer.Length;
                 }
-                //MessageBox.Show(name + "isHook:" + isHook.ToString());
+   
                 return luaL_loadbufferx(luaState, buff, size, name, mode);
             }
         }

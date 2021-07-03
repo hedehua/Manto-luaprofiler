@@ -25,6 +25,7 @@ namespace SparrowLuaProfiler
             attachmentColumn.DefaultCellStyle.NullValue = null;
 
             NetWorkServer.RegisterOnReceiveSample(OnReceiveSample);
+            NetWorkServer.RegisterOnClientConnected(OnClientConnected);
             NetWorkServer.BeginListen("0.0.0.0", 2333);
             timer1.Enabled = true;
             boldFont = new Font(tvTaskList.DefaultCellStyle.Font, FontStyle.Bold);
@@ -36,25 +37,70 @@ namespace SparrowLuaProfiler
             base.OnClosed(e);
         }
 
+        class Frame
+        {
+            private Dictionary<string, Sample> dict;
+            private List<Sample> samples;
+            public Sample AddSample(Sample sample)
+            {
+                if (dict == null) dict = new Dictionary<string, Sample>();
+                if (samples == null) samples = new List<Sample>();
+                Sample s;
+                if (dict.TryGetValue(sample.name, out s))
+                {
+                    s.AddSample(sample);
+                    return s;
+                }
+
+                dict.Add(sample.name, sample);
+                samples.Add(sample);
+                return sample;
+            }
+            public void Clear()
+            {
+                if (dict != null) dict.Clear();
+                if (samples != null) samples.Clear();
+            }
+            public List<Sample> GetSamples() { return samples; }
+        }
+
         #region refresh
         Queue<Sample> queue = new Queue<Sample>(32);
-        Dictionary<string, Sample> dict = new Dictionary<string, Sample>();
         Dictionary<string, TreeGridNode> nodeDict = new Dictionary<string, TreeGridNode>();
-        List<Sample> roots = new List<Sample>();
+        List<Frame> frames = new List<Frame>();
+        Dictionary<string, Series> timelineDic = new Dictionary<string, Series>();
+
         private Font boldFont;
+        private int selectedFrame;
+        private int lastPaintIndex = 0;
         private void OnReceiveSample(Sample sample)
         {
             lock (queue)
             {
                 queue.Enqueue(sample);
-                Console.WriteLine(sample.name);
             }
+        }
+        private void OnClientConnected() 
+        {
+            MessageBox.Show("连接成功");
+        }
+
+        private void OnSelectedFrameChanged(int index)
+        {
+            if (index == selectedFrame) return;
+            selectedFrame = index;
+            ClearFrameInfo();
+            FillFormInfo();
         }
 
         private void FillFormInfo()
         {
+            if (selectedFrame < 0 || selectedFrame >= frames.Count) return;
 
-            foreach (var item in roots)
+            Frame frame = frames[selectedFrame];
+            List<Sample> samples = frame.GetSamples();
+            if (samples == null) return;
+            foreach (var item in samples)
             {
                 TreeGridNode treeNode;
                 if (!nodeDict.TryGetValue(item.fullName, out treeNode))
@@ -65,6 +111,54 @@ namespace SparrowLuaProfiler
                 DoFillChildFormInfo(item, treeNode);
             }
             tvTaskList.Refresh();
+        }
+
+        const float MaxMS = 1000.0f;
+        private void FillTimeline()
+        {
+            Series GT = GetOrAddSeries("GT");
+            for (; lastPaintIndex < frames.Count; lastPaintIndex++)
+            {
+                foreach (string name in timelineDic.Keys)
+                {
+                    Series series = GetOrAddSeries(name);
+                    Frame frame = frames[lastPaintIndex];
+                    double costTime = GetFunctionCost(frame, name);
+                    series.Points.AddXY(lastPaintIndex, costTime / MaxMS);
+                }
+            }
+
+        }
+        private Series GetOrAddSeries(string name)
+        {
+            if (timelineDic.ContainsKey(name))
+            {
+                return timelineDic[name];
+            }
+            System.Random random = new System.Random();
+            Series series = this.chart1.Series.Add(name);
+            series.ChartType = SeriesChartType.Area;
+            series.IsValueShownAsLabel = true;
+            series.MarkerStyle = MarkerStyle.Square;
+            series.Color = System.Drawing.Color.FromArgb(random.Next(255), random.Next(255), random.Next(255));
+            series.BorderWidth = 1;
+            series.IsXValueIndexed = true;
+            timelineDic.Add(name, series);
+            return series;
+        }
+
+        private double GetFunctionCost(Frame frame, string name = null)
+        {
+            List<Sample> samples = frame.GetSamples();
+            double costTime = 0.0f;
+            foreach (Sample sample in samples)
+            {
+                if (name == "GT" || sample.name == name)
+                {
+                    costTime += sample.costTime;
+                }
+            }
+            return costTime;
         }
 
         const long MaxB = 1024;
@@ -193,14 +287,20 @@ namespace SparrowLuaProfiler
 
         private void button1_Click(object sender, EventArgs e)
         {
-            ClearForm();
+            ClearAll();
         }
-        private void ClearForm()
+        private void ClearAll()
         {
             queue.Clear();
-            dict.Clear();
+            frames.Clear();
+            timelineDic.Clear();
+            chart1.Series.Clear();
+
+            ClearFrameInfo();
+        }
+        private void ClearFrameInfo() 
+        {
             nodeDict.Clear();
-            roots.Clear();
             tvTaskList.Nodes.Clear();
         }
         #endregion
@@ -305,41 +405,43 @@ namespace SparrowLuaProfiler
 
         #endregion
 
-        static int last = 0;
         private void Timer1_Tick(object sender, EventArgs e)
         {
-            // test data
-
-            System.Windows.Forms.DataVisualization.Charting.Series gameThreadSeries = this.chart1.Series["GameThread"];
-            gameThreadSeries.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line;
-            gameThreadSeries.IsValueShownAsLabel = true;
-            gameThreadSeries.MarkerStyle = System.Windows.Forms.DataVisualization.Charting.MarkerStyle.Square;
-            gameThreadSeries.Color = System.Drawing.Color.Red;
-            gameThreadSeries.BorderWidth = 1;
-            System.Random rd = new System.Random();
-            gameThreadSeries.Points.AddXY(last++, rd.Next(100));
 
             lock (queue)
             {
                 while (queue.Count > 0)
                 {
                     Sample sample = queue.Dequeue();
-                    Sample s;
-                    if (dict.TryGetValue(sample.name, out s))
+                    int frameCount = sample.frameCount;
+                    Frame frame = null;
+                    if (frameCount >= frames.Count)
                     {
-                        s.AddSample(sample);
+                        frame = new Frame();
+                        frames.Add(frame);
                     }
                     else
                     {
-                        dict.Add(sample.name, sample);
-                        roots.Add(sample);
+                        frame = frames[frameCount];
                     }
+                    frame.AddSample(sample);
+
                 }
-                FillFormInfo();
+                FillTimeline();
             }
         }
 
-        static float ZoomScale = 0.01f;
+        private void Chart1_MouseClick(object sender, MouseEventArgs e) 
+        {
+            Chart chart = (Chart)sender;
+            HitTestResult result = chart.HitTest(e.X, e.Y);
+            if (result.PointIndex >= 0) 
+            {
+                int frameIndex = result.PointIndex;
+                OnSelectedFrameChanged(frameIndex);
+            }
+        }
+
         private void Chart1_MouseWheel(object sender, MouseEventArgs e)
         {
             Chart chart = (Chart)sender;

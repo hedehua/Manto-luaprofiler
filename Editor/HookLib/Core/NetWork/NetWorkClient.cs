@@ -64,7 +64,7 @@ namespace SparrowLuaProfiler
             try
             {
                 m_client.Connect(host, port);
-                MessageBox.Show("连接成功");
+                LuaDLL.print(string.Format("connect to {0}:{1}", host, port));
                 m_client.Client.SendTimeout = 30000;
                 //m_sampleDict.Clear();
                 m_strDict.Clear();
@@ -78,13 +78,14 @@ namespace SparrowLuaProfiler
             }
             catch (Exception e)
             {
-                MessageBox.Show("connect error:" + e.Message);
+                LuaDLL.print("connect error:" + e.Message);
                 Close();
             }
         }
 
         public static void Close()
         {
+            LuaDLL.print("socket closed.");
             try
             {
                 if (m_client != null)
@@ -99,7 +100,7 @@ namespace SparrowLuaProfiler
             }
             catch (Exception e)
             {
-                MessageBox.Show("close error:"+e.Message);
+                LuaDLL.print("close error:"+e.Message);
             }
             finally
             {

@@ -68,27 +68,30 @@ namespace SparrowLuaProfiler
             System.Windows.Forms.DataVisualization.Charting.ChartArea area = this.chart1.ChartAreas.Add("ChartArea");
 
             this.chart1.MouseWheel += Chart1_MouseWheel;
-            this.chart1.Series.Add("GameThread");
+            this.chart1.MouseClick += Chart1_MouseClick;
 
             area.InnerPlotPosition.Auto = true;
+            area.IsSameFontSizeForAllAxes = true;
             
             area.CursorX.AutoScroll = true;
             area.CursorX.IsUserEnabled = true;
             area.CursorX.IsUserSelectionEnabled = false;
             //area.AlignmentStyle = System.Windows.Forms.DataVisualization.Charting.AreaAlignmentStyles.All ;
 
-            area.AxisX.MinorGrid.LineColor = System.Drawing.Color.LightGray; ;
+            area.AxisX.MinorGrid.LineColor = System.Drawing.Color.LightGray; 
             area.AxisX.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-            area.AxisX.ScrollBar.Enabled = true;
-            area.AxisX.ScaleView.Zoomable = true;
-            
+
+            area.AxisX.ScaleView.Zoomable = true;   
             area.AxisX.ScaleView.Position = 0;
             area.AxisX.ScaleView.Size = 10;
+
+            area.AxisX.ScrollBar.Enabled = true;
             area.AxisX.ScrollBar.ButtonColor = System.Drawing.Color.LightGray;
             area.AxisX.ScrollBar.Size = 8;
             area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.SmallScroll;
             area.AxisX.ScrollBar.IsPositionedInside = false;
             area.AxisX.IsLabelAutoFit = false;
+            area.AxisX.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.None;
 
             area.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
             area.AxisY.LabelStyle.Enabled = false;

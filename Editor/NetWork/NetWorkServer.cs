@@ -56,6 +56,7 @@ namespace SparrowLuaProfiler
 
         private const int PACK_HEAD = 0x23333333;
         private static Action<Sample> m_onReceiveSample;
+        private static Action m_onClientConnected;
         private static Queue<int> m_cmdQueue = new Queue<int>(32);
 
         public static bool CheckIsReceiving()
@@ -71,6 +72,10 @@ namespace SparrowLuaProfiler
         public static void UnRegisterReceive()
         {
             m_onReceiveSample = null;
+        }
+        public static void RegisterOnClientConnected(Action onConnected) 
+        {
+            m_onClientConnected = onConnected;
         }
 
         public static void BeginListen(string ip, int port)
@@ -117,10 +122,9 @@ namespace SparrowLuaProfiler
                 Close();
                 return;
             }
-            //TODO
-            //LuaProfilerWindow.ClearTreeView();
 
             Console.WriteLine("<color=#00ff00>link start</color>");
+            
             tcpClient.ReceiveTimeout = 1000000;
             ns = tcpClient.GetStream();
             br = new BinaryReader(ns);
@@ -135,6 +139,7 @@ namespace SparrowLuaProfiler
             // 启动一个线程来发送请求
             sendThread = new Thread(DoSendMessage);
             sendThread.Start();
+            if (m_onClientConnected != null) m_onClientConnected();
         }
 
         // 0获取ref表，1 记录下当前全局表状态，2 diff 当前状态与历史记录, 3 执行完lua的gc在diff

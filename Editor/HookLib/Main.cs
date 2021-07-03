@@ -78,6 +78,7 @@ namespace SparrowLuaProfiler
             frameCount = 0;
             try
             {
+                LuaDLL.print("HookLib inject success.");
                 LuaDLL.Uninstall();
                 LuaDLL.HookLoadLibrary();
                 LuaDLL.BindEasyHook();
