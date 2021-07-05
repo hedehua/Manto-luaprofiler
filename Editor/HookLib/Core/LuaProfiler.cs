@@ -227,6 +227,7 @@ namespace SparrowLuaProfiler
             //释放掉被累加的Sample
             if (beginSampleMemoryStack.Count != 0 && sample.fahter == null)
             {
+                LuaDLL.print(string.Format("sample[%s] restore.", sample.name));
                 sample.Restore();
             }
         }

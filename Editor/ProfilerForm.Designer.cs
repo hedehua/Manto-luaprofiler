@@ -76,7 +76,6 @@ namespace SparrowLuaProfiler
             area.CursorX.AutoScroll = true;
             area.CursorX.IsUserEnabled = true;
             area.CursorX.IsUserSelectionEnabled = false;
-            //area.AlignmentStyle = System.Windows.Forms.DataVisualization.Charting.AreaAlignmentStyles.All ;
 
             area.AxisX.MinorGrid.LineColor = System.Drawing.Color.LightGray; 
             area.AxisX.MajorGrid.LineColor = System.Drawing.Color.LightGray;
@@ -94,7 +93,7 @@ namespace SparrowLuaProfiler
             area.AxisX.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.None;
 
             area.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-            area.AxisY.LabelStyle.Enabled = false;
+            area.AxisY.LabelStyle.Enabled = true;
 
             // tvTaskList
             // 

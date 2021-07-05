@@ -113,41 +113,44 @@ namespace SparrowLuaProfiler
             tvTaskList.Refresh();
         }
 
-        const float MaxMS = 1000.0f;
+        const int MaxMS = 10000;
         private void FillTimeline()
         {
-            Series GT = GetOrAddSeries("GT");
+            Series GT = GetOrCreateSeries("GT");
             for (; lastPaintIndex < frames.Count; lastPaintIndex++)
             {
                 foreach (string name in timelineDic.Keys)
                 {
-                    Series series = GetOrAddSeries(name);
+                    Series series = GetOrCreateSeries(name);
                     Frame frame = frames[lastPaintIndex];
-                    double costTime = GetFunctionCost(frame, name);
-                    series.Points.AddXY(lastPaintIndex, costTime / MaxMS);
+                    double costTime = GetFunctionCostTime(frame, name);
+                    series.Points.AddXY(lastPaintIndex, costTime);
                 }
             }
 
         }
-        private Series GetOrAddSeries(string name)
+        private Series GetOrCreateSeries(string name)
         {
-            if (timelineDic.ContainsKey(name))
+            Series series1;
+            if (timelineDic.TryGetValue(name,out series1)) 
             {
-                return timelineDic[name];
+                return series1;
             }
             System.Random random = new System.Random();
             Series series = this.chart1.Series.Add(name);
-            series.ChartType = SeriesChartType.Area;
+            series.ChartType = SeriesChartType.FastLine;
             series.IsValueShownAsLabel = true;
             series.MarkerStyle = MarkerStyle.Square;
             series.Color = System.Drawing.Color.FromArgb(random.Next(255), random.Next(255), random.Next(255));
             series.BorderWidth = 1;
             series.IsXValueIndexed = true;
+            series.IsValueShownAsLabel = false;
+            
             timelineDic.Add(name, series);
             return series;
         }
 
-        private double GetFunctionCost(Frame frame, string name = null)
+        private double GetFunctionCostTime(Frame frame, string name = null)
         {
             List<Sample> samples = frame.GetSamples();
             double costTime = 0.0f;
@@ -155,7 +158,7 @@ namespace SparrowLuaProfiler
             {
                 if (name == "GT" || sample.name == name)
                 {
-                    costTime += sample.costTime;
+                    costTime += sample.costTime/ (double)MaxMS;
                 }
             }
             return costTime;
@@ -198,7 +201,7 @@ namespace SparrowLuaProfiler
         private void DoFillChildFormInfo(Sample sampleNood, TreeGridNode treeNode)
         {
             treeNode.DefaultCellStyle.Font = boldFont;
-            float totoalTime = (float)sampleNood.currentTime / 10000;
+            float totoalTime = (float)sampleNood.costTime / MaxMS;
             treeNode.SetValues(null, sampleNood.name, GetMemoryString(sampleNood.costLuaGC), GetMemoryString(sampleNood.selfLuaGC), GetMemoryString(sampleNood.luaGC), (totoalTime / (float)sampleNood.calls).ToString("f2") + "ms", totoalTime.ToString("f2") + "ms", GetMemoryString(sampleNood.calls, ""));
             sampleNood.luaGC = 0;
             for (int i = 0, imax = sampleNood.childs.Count; i < imax; i++)
@@ -450,21 +453,28 @@ namespace SparrowLuaProfiler
             {
                 double xMin = xAxis.ScaleView.ViewMinimum;
                 double xMax = xAxis.ScaleView.ViewMaximum;
+                double currentSize = xMax - xMin;
+                double mousePoint = xAxis.PixelPositionToValue(e.X);
+                double xratio = (mousePoint - xMin) / currentSize;
+                double newSize = e.Delta > 0 ? currentSize / 1.2f : currentSize * 1.2f ;
 
-                if (e.Delta < 0)
-                {
-                    xAxis.ScaleView.ZoomReset();
-                }
-                else if (e.Delta > 0)
-                {
+                //if (e.Delta < 0)
+                //{
+                //    xAxis.ScaleView.ZoomReset();
+                //}
+                //else if (e.Delta > 0)
+                //{
 
-                    double posXStart = xAxis.PixelPositionToValue(e.Location.X) - (xMax - xMin) / 2;
-                    double posXFinish = xAxis.PixelPositionToValue(e.Location.X) + (xMax - xMin) / 2;
+                //    double posXStart = mousePoint - (xMax - xMin) / 2;
+                //    double posXFinish = mousePoint + (xMax - xMin) / 2;
 
-                    xAxis.ScaleView.Zoom(posXStart, posXFinish);
+                //    xAxis.ScaleView.Zoom(posXStart, posXFinish);
 
-                }
+                //}
 
+                double posXStart = Math.Max(mousePoint - newSize * xratio, 0);
+                double posXEnd = mousePoint + newSize * (1 - xratio);
+                xAxis.ScaleView.Zoom(posXStart, posXEnd);
             }
         }
     }
