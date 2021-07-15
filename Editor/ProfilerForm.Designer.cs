@@ -69,6 +69,7 @@ namespace SparrowLuaProfiler
 
             this.chart1.MouseWheel += Chart1_MouseWheel;
             this.chart1.MouseClick += Chart1_MouseClick;
+            this.chart1.GetToolTipText += Chart1_GetToolTipText;
 
             area.InnerPlotPosition.Auto = true;
             area.IsSameFontSizeForAllAxes = true;
@@ -83,17 +84,23 @@ namespace SparrowLuaProfiler
             area.AxisX.ScaleView.Zoomable = true;   
             area.AxisX.ScaleView.Position = 0;
             area.AxisX.ScaleView.Size = 10;
+            area.AxisX.Minimum = 0.0f;
 
             area.AxisX.ScrollBar.Enabled = true;
             area.AxisX.ScrollBar.ButtonColor = System.Drawing.Color.LightGray;
             area.AxisX.ScrollBar.Size = 8;
-            area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.SmallScroll;
-            area.AxisX.ScrollBar.IsPositionedInside = false;
-            area.AxisX.IsLabelAutoFit = false;
-            area.AxisX.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.None;
+            area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.None;
+            area.AxisX.ScrollBar.IsPositionedInside = true;
+            area.AxisX.LabelStyle.Enabled = false;
+           // area.AxisX.IsLabelAutoFit = false;
+           // area.AxisX.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.None;
 
             area.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
+            area.AxisY.MinorGrid.LineColor = System.Drawing.Color.LightGray;
             area.AxisY.LabelStyle.Enabled = true;
+            area.AxisY.IsMarginVisible = false;
+            area.AxisY.Minimum = 0.0f;
+            area.AxisY.Maximum = 10.0f;
 
             // tvTaskList
             // 

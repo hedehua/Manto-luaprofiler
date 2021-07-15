@@ -116,7 +116,7 @@ namespace SparrowLuaProfiler
         const int MaxMS = 10000;
         private void FillTimeline()
         {
-            Series GT = GetOrCreateSeries("GT");
+            GetOrCreateSeries("GT");
             for (; lastPaintIndex < frames.Count; lastPaintIndex++)
             {
                 foreach (string name in timelineDic.Keys)
@@ -138,13 +138,14 @@ namespace SparrowLuaProfiler
             }
             System.Random random = new System.Random();
             Series series = this.chart1.Series.Add(name);
-            series.ChartType = SeriesChartType.FastLine;
+            series.ChartType = SeriesChartType.Column;
             series.IsValueShownAsLabel = true;
-            series.MarkerStyle = MarkerStyle.Square;
+            series.MarkerStyle = MarkerStyle.None;
             series.Color = System.Drawing.Color.FromArgb(random.Next(255), random.Next(255), random.Next(255));
             series.BorderWidth = 1;
             series.IsXValueIndexed = true;
             series.IsValueShownAsLabel = false;
+         
             
             timelineDic.Add(name, series);
             return series;
@@ -153,15 +154,15 @@ namespace SparrowLuaProfiler
         private double GetFunctionCostTime(Frame frame, string name = null)
         {
             List<Sample> samples = frame.GetSamples();
-            double costTime = 0.0f;
+            int costTime = 0;
             foreach (Sample sample in samples)
             {
                 if (name == "GT" || sample.name == name)
                 {
-                    costTime += sample.costTime/ (double)MaxMS;
+                    costTime += sample.costTime;
                 }
             }
-            return costTime;
+            return costTime/ (double)MaxMS;
         }
 
         const long MaxB = 1024;
@@ -433,15 +434,36 @@ namespace SparrowLuaProfiler
                 FillTimeline();
             }
         }
+        private int pointIndexOnMouseOver = 0;
+        private void Chart1_GetToolTipText(object sender, ToolTipEventArgs e)
+        {
+            pointIndexOnMouseOver = e.HitTestResult.PointIndex;
+            if (e.HitTestResult.ChartElementType == ChartElementType.DataPoint)
+            {
+                DataPoint dp = e.HitTestResult.Series.Points[pointIndexOnMouseOver];
+                e.Text = string.Format("frame:{0}\nduration:{1:F3}ms", dp.XValue, dp.YValues[0]);
+            }
+        //    Console.WriteLine(string.Format("ToolTip {0} {1} {2} {3}", e.X, e.Y, e.HitTestResult.PointIndex, e.HitTestResult.ChartElementType.ToString()));
+
+        }
 
         private void Chart1_MouseClick(object sender, MouseEventArgs e) 
         {
-            Chart chart = (Chart)sender;
-            HitTestResult result = chart.HitTest(e.X, e.Y);
-            if (result.PointIndex >= 0) 
+
+            if (pointIndexOnMouseOver > 0) 
             {
-                int frameIndex = result.PointIndex;
-                OnSelectedFrameChanged(frameIndex);
+                OnSelectedFrameChanged(pointIndexOnMouseOver);
+                return;
+            }
+            Chart chart = (Chart)sender;
+            HitTestResult[] results = chart.HitTest(e.X, chart.Size.Height -18, true, ChartElementType.DataPoint);
+            foreach (HitTestResult result in results)
+            {
+                if (result.PointIndex > 0)
+                {
+                    int frameIndex = result.PointIndex;
+                    OnSelectedFrameChanged(frameIndex);
+                }
             }
         }
 
@@ -457,20 +479,6 @@ namespace SparrowLuaProfiler
                 double mousePoint = xAxis.PixelPositionToValue(e.X);
                 double xratio = (mousePoint - xMin) / currentSize;
                 double newSize = e.Delta > 0 ? currentSize / 1.2f : currentSize * 1.2f ;
-
-                //if (e.Delta < 0)
-                //{
-                //    xAxis.ScaleView.ZoomReset();
-                //}
-                //else if (e.Delta > 0)
-                //{
-
-                //    double posXStart = mousePoint - (xMax - xMin) / 2;
-                //    double posXFinish = mousePoint + (xMax - xMin) / 2;
-
-                //    xAxis.ScaleView.Zoom(posXStart, posXFinish);
-
-                //}
 
                 double posXStart = Math.Max(mousePoint - newSize * xratio, 0);
                 double posXEnd = mousePoint + newSize * (1 - xratio);

@@ -123,9 +123,10 @@ namespace SparrowLuaProfiler
             try
             {
                 long memoryCount = LuaDLL.GetLuaMemory(luaState);
-                Sample sample = Sample.Create(getcurrentTime, (int)memoryCount, name);
+                Sample sample = Sample.Create(0, (int)memoryCount, name);
                 sample.needShow = needShow;
                 beginSampleMemoryStack.Push(sample);
+                sample.currentTime = getcurrentTime;
             }
             catch
             {
@@ -178,6 +179,7 @@ namespace SparrowLuaProfiler
         }
         public static void EndSample(IntPtr luaState)
         {
+            long currentTime = getcurrentTime;
             if (!IsMainThread)
             {
                 return;
@@ -191,7 +193,7 @@ namespace SparrowLuaProfiler
             long nowMonoCount = GC.GetTotalMemory(false);
             Sample sample = beginSampleMemoryStack.Pop();
 
-            sample.costTime = (int)(getcurrentTime - sample.currentTime);
+            sample.costTime = (int)(currentTime - sample.currentTime);
             var monoGC = nowMonoCount - sample.currentMonoMemory;
             var luaGC = nowMemoryCount - sample.currentLuaMemory;
             sample.currentLuaMemory = (int)nowMemoryCount;
