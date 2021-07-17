@@ -46,8 +46,8 @@ namespace SparrowLuaProfiler
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.attachmentColumn = new System.Windows.Forms.DataGridViewImageColumn();
             this.overview = new AdvancedDataGridView.TreeGridColumn();
-            this.totalLuaMemory = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.selfLuaMemory = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            //this.totalLuaMemory = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.selfCostTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.luaGC = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.averageTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.totalTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -104,6 +104,7 @@ namespace SparrowLuaProfiler
 
             // tvTaskList
             // 
+            this.tvTaskList.RowEnter += GridView_RowEnter;
             this.tvTaskList.AllowUserToAddRows = false;
             this.tvTaskList.AllowUserToDeleteRows = false;
             this.tvTaskList.AllowUserToOrderColumns = true;
@@ -117,18 +118,20 @@ namespace SparrowLuaProfiler
             this.tvTaskList.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.attachmentColumn,
             this.overview,
-            this.totalLuaMemory,
-            this.selfLuaMemory,
-            this.luaGC,
-            this.averageTime,
+            //this.totalLuaMemory,
             this.totalTime,
-            this.totalCalls});
+            this.selfCostTime,
+            this.averageTime,
+            this.totalCalls,
+            this.luaGC});
             this.tvTaskList.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.tvTaskList.ImageList = null;
             this.tvTaskList.Location = new System.Drawing.Point(1, 32+128);
             this.tvTaskList.Name = "tvTaskList";
             this.tvTaskList.RowHeadersVisible = false;
             this.tvTaskList.RowHeadersWidth = 20;
+        //    this.tvTaskList.DefaultCellStyle.Font = new System.Drawing.Font(System.Windows.Forms.DataGridView.DefaultFont, System.Drawing.FontStyle.Underline);
+
             this.tvTaskList.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.tvTaskList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.tvTaskList.Size = new System.Drawing.Size(1416, 546-130);
@@ -226,26 +229,13 @@ namespace SparrowLuaProfiler
             // overview
             // 
             this.overview.DefaultNodeImage = null;
-            this.overview.FillWeight = 150F;
+            this.overview.FillWeight = 450F;
             this.overview.HeaderText = "OverView";
             this.overview.MaxInputLength = 3000;
             this.overview.Name = "overview";
             this.overview.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             this.overview.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
-            // totalLuaMemory
-            // 
-            this.totalLuaMemory.FillWeight = 170.212F;
-            this.totalLuaMemory.HeaderText = "TotalLuaGC";
-            this.totalLuaMemory.Name = "totalLuaMemory";
-            this.totalLuaMemory.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
-            // selfLuaMemory
-            // 
-            this.selfLuaMemory.FillWeight = 130.0109F;
-            this.selfLuaMemory.HeaderText = "Self";
-            this.selfLuaMemory.Name = "selfLuaMemory";
-            this.selfLuaMemory.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            
             // 
             // luaGC
             // 
@@ -253,15 +243,21 @@ namespace SparrowLuaProfiler
             this.luaGC.Name = "luaGC";
             this.luaGC.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             // 
+            // totalLuaMemory
+            // 
+            this.selfCostTime.HeaderText = "Self(ms)";
+            this.selfCostTime.Name = "internalCostTime";
+            this.selfCostTime.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            // 
             // averageTime
             // 
-            this.averageTime.HeaderText = "AverageTime";
+            this.averageTime.HeaderText = "AverageTime(ms)";
             this.averageTime.Name = "averageTime";
             this.averageTime.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             // 
             // totalTime
             // 
-            this.totalTime.HeaderText = "TotalTime";
+            this.totalTime.HeaderText = "TotalTime（ms)";
             this.totalTime.Name = "totalTime";
             this.totalTime.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
             // 
@@ -312,9 +308,10 @@ namespace SparrowLuaProfiler
         private System.Windows.Forms.DataVisualization.Charting.Chart chart1;
         private System.Windows.Forms.DataGridViewImageColumn attachmentColumn;
         private TreeGridColumn overview;
-        private System.Windows.Forms.DataGridViewTextBoxColumn totalLuaMemory;
-        private System.Windows.Forms.DataGridViewTextBoxColumn selfLuaMemory;
+        //private System.Windows.Forms.DataGridViewTextBoxColumn totalLuaMemory;
+
         private System.Windows.Forms.DataGridViewTextBoxColumn luaGC;
+        private System.Windows.Forms.DataGridViewTextBoxColumn selfCostTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn averageTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalCalls;

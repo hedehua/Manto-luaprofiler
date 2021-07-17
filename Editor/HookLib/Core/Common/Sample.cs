@@ -186,6 +186,7 @@ namespace SparrowLuaProfiler
         public int costMonoGC;
         public string name;
         public int costTime;
+        public int internalCostTime;
         public Sample _father;
         public MList<Sample> childs = new MList<Sample>(16);
         public string captureUrl = null;
@@ -360,6 +361,7 @@ namespace SparrowLuaProfiler
                 s.costMonoGC = 0;
                 s.name = name;
                 s.costTime = 0;
+                s.internalCostTime = 0;
                 s._father = null;
                 s.childs.Clear();
                 s.captureUrl = null;
@@ -389,9 +391,10 @@ namespace SparrowLuaProfiler
         {
             calls += s.calls;
             costLuaGC += s.costLuaGC;
-            luaGC += s.costLuaGC;
+            luaGC += s.costLuaGC;   // obsolete
             costMonoGC += s.costMonoGC;
             costTime += s.costTime;
+            internalCostTime += s.internalCostTime;
             for (int i = s.childs.Count - 1; i >= 0; i--)
             {
                 var item = s.childs[i];
@@ -413,6 +416,7 @@ namespace SparrowLuaProfiler
             s.costLuaGC = costLuaGC;
             s.name = name;
             s.costTime = costTime;
+            s.internalCostTime = internalCostTime;
 
             int childCount = childs.Count;
             for (int i = 0; i < childCount; i++)
@@ -430,6 +434,7 @@ namespace SparrowLuaProfiler
         #endregion
 
         #region 序列化
+        [Obsolete]
         public static void SerializeList(List<Sample> samples, string path)
         {
             FileStream fs = new FileStream(path, FileMode.CreateNew, FileAccess.Write);
@@ -444,7 +449,7 @@ namespace SparrowLuaProfiler
             }
             b.Close();
         }
-
+        [Obsolete]
         public static List<Sample> DeserializeList(string path)
         {
             FileStream ms = new FileStream(path, FileMode.Open, FileAccess.Read);
@@ -463,7 +468,7 @@ namespace SparrowLuaProfiler
 
             return result;
         }
-
+        [Obsolete]
         public byte[] Serialize()
         {
             byte[] result = null;
@@ -480,6 +485,7 @@ namespace SparrowLuaProfiler
             b.Write(datas);
 
             b.Write(costTime);
+            b.Write(internalCostTime);
 
             b.Write(childs.Count);
             for (int i = 0, imax = childs.Count; i < imax; i++)
@@ -513,7 +519,7 @@ namespace SparrowLuaProfiler
 
             return result;
         }
-
+        [Obsolete]
         public static Sample Deserialize(byte[] data)
         {
             MemoryStream ms = new MemoryStream(data);
@@ -521,7 +527,7 @@ namespace SparrowLuaProfiler
 
             return Deserialize(b);
         }
-
+        [Obsolete]
         public static Sample Deserialize(BinaryReader b)
         {
             Sample s = new Sample();
@@ -534,6 +540,7 @@ namespace SparrowLuaProfiler
             byte[] datas = b.ReadBytes(len);
             s.name = Encoding.UTF8.GetString(datas);
             s.costTime = b.ReadInt32();
+            s.internalCostTime = b.ReadInt32();
 
             int childCount = b.ReadInt32();
             for (int i = 0; i < childCount; i++)

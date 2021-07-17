@@ -141,5 +141,11 @@ namespace SparrowLuaProfiler
                 Array.Clear(this._items, this._size, -delta);
             }
         }
+        public T[] ToArray()
+        {
+            T[] ret = new T[Count];
+            Array.Copy(this._items, ret, ret.Length);
+            return ret;
+        }
     }
 }

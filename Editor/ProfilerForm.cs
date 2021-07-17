@@ -26,6 +26,7 @@ namespace SparrowLuaProfiler
 
             NetWorkServer.RegisterOnReceiveSample(OnReceiveSample);
             NetWorkServer.RegisterOnClientConnected(OnClientConnected);
+            NetWorkServer.RegisterOnClientDisconnected(OnClientDisconnected);
             NetWorkServer.BeginListen("0.0.0.0", 2333);
             timer1.Enabled = true;
             boldFont = new Font(tvTaskList.DefaultCellStyle.Font, FontStyle.Bold);
@@ -40,11 +41,11 @@ namespace SparrowLuaProfiler
         class Frame
         {
             private Dictionary<string, Sample> dict;
-            private List<Sample> samples;
+            private MList<Sample> samples;
             public Sample AddSample(Sample sample)
             {
                 if (dict == null) dict = new Dictionary<string, Sample>();
-                if (samples == null) samples = new List<Sample>();
+                if (samples == null) samples = new MList<Sample>(16);
                 Sample s;
                 if (dict.TryGetValue(sample.name, out s))
                 {
@@ -61,7 +62,7 @@ namespace SparrowLuaProfiler
                 if (dict != null) dict.Clear();
                 if (samples != null) samples.Clear();
             }
-            public List<Sample> GetSamples() { return samples; }
+            public MList<Sample> GetSamples() { return samples; }
         }
 
         #region refresh
@@ -79,10 +80,16 @@ namespace SparrowLuaProfiler
             {
                 queue.Enqueue(sample);
             }
+            // Console.WriteLine("receive sample :"+ sample.name);
         }
         private void OnClientConnected() 
         {
             MessageBox.Show("连接成功");
+        }
+
+        private void OnClientDisconnected() 
+        {
+            MessageBox.Show("断开连接");
         }
 
         private void OnSelectedFrameChanged(int index)
@@ -92,16 +99,24 @@ namespace SparrowLuaProfiler
             ClearFrameInfo();
             FillFormInfo();
         }
+        private int SortSample(Sample p1, Sample p2) 
+        {
+            if (p1.costTime > p2.costTime) return -1;
+            if (p1.costTime < p2.costTime) return 1;
+            return 0;
+        }
 
         private void FillFormInfo()
         {
             if (selectedFrame < 0 || selectedFrame >= frames.Count) return;
 
             Frame frame = frames[selectedFrame];
-            List<Sample> samples = frame.GetSamples();
+            Sample[] samples = frame.GetSamples().ToArray();
             if (samples == null) return;
-            foreach (var item in samples)
+            Array.Sort(samples, SortSample);
+            for (int i = 0;i< samples.Length;i++)
             {
+                Sample item = samples[i];
                 TreeGridNode treeNode;
                 if (!nodeDict.TryGetValue(item.fullName, out treeNode))
                 {
@@ -146,17 +161,17 @@ namespace SparrowLuaProfiler
             series.IsXValueIndexed = true;
             series.IsValueShownAsLabel = false;
          
-            
             timelineDic.Add(name, series);
             return series;
         }
 
         private double GetFunctionCostTime(Frame frame, string name = null)
         {
-            List<Sample> samples = frame.GetSamples();
+            MList<Sample> samples = frame.GetSamples();
             int costTime = 0;
-            foreach (Sample sample in samples)
+            for(int i = 0;i< samples.Count;i++)
             {
+                Sample sample = samples[i];
                 if (name == "GT" || sample.name == name)
                 {
                     costTime += sample.costTime;
@@ -203,11 +218,14 @@ namespace SparrowLuaProfiler
         {
             treeNode.DefaultCellStyle.Font = boldFont;
             float totoalTime = (float)sampleNood.costTime / MaxMS;
-            treeNode.SetValues(null, sampleNood.name, GetMemoryString(sampleNood.costLuaGC), GetMemoryString(sampleNood.selfLuaGC), GetMemoryString(sampleNood.luaGC), (totoalTime / (float)sampleNood.calls).ToString("f2") + "ms", totoalTime.ToString("f2") + "ms", GetMemoryString(sampleNood.calls, ""));
+            float intrnalCostTime = (float)sampleNood.internalCostTime / MaxMS;
+            treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), intrnalCostTime.ToString("f3"),  (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC));
             sampleNood.luaGC = 0;
-            for (int i = 0, imax = sampleNood.childs.Count; i < imax; i++)
+            Sample[] samples = sampleNood.childs.ToArray();
+            Array.Sort(samples,SortSample);
+            for (int i = 0, imax = samples.Length; i < imax; i++)
             {
-                var item = sampleNood.childs[i];
+                var item = samples[i];
                 TreeGridNode node;
                 if (!nodeDict.TryGetValue(item.fullName, out node))
                 {
@@ -274,13 +292,15 @@ namespace SparrowLuaProfiler
         private void deattachBtn_Click(object sender, EventArgs e)
         {
             Thread.Sleep(1000);
-
+            NetWorkServer.CloseClient();
+            Thread.Sleep(100);
             NativeAPI.GacUninstallAssemblies
             (
                 new string[] { "HookLib.dll" }
                 , "A simple ProcessMonitor based on EasyHook!",
                 base64Str
             );
+            
             Thread.Sleep(100);
 
             MessageBox.Show("已解除");
@@ -295,6 +315,7 @@ namespace SparrowLuaProfiler
         }
         private void ClearAll()
         {
+            lastPaintIndex = 0;
             queue.Clear();
             frames.Clear();
             timelineDic.Clear();
@@ -443,14 +464,12 @@ namespace SparrowLuaProfiler
                 DataPoint dp = e.HitTestResult.Series.Points[pointIndexOnMouseOver];
                 e.Text = string.Format("frame:{0}\nduration:{1:F3}ms", dp.XValue, dp.YValues[0]);
             }
-        //    Console.WriteLine(string.Format("ToolTip {0} {1} {2} {3}", e.X, e.Y, e.HitTestResult.PointIndex, e.HitTestResult.ChartElementType.ToString()));
-
         }
 
         private void Chart1_MouseClick(object sender, MouseEventArgs e) 
         {
 
-            if (pointIndexOnMouseOver > 0) 
+            if (pointIndexOnMouseOver >= 0) 
             {
                 OnSelectedFrameChanged(pointIndexOnMouseOver);
                 return;
@@ -459,7 +478,7 @@ namespace SparrowLuaProfiler
             HitTestResult[] results = chart.HitTest(e.X, chart.Size.Height -18, true, ChartElementType.DataPoint);
             foreach (HitTestResult result in results)
             {
-                if (result.PointIndex > 0)
+                if (result.PointIndex >= 0)
                 {
                     int frameIndex = result.PointIndex;
                     OnSelectedFrameChanged(frameIndex);
@@ -484,6 +503,10 @@ namespace SparrowLuaProfiler
                 double posXEnd = mousePoint + newSize * (1 - xratio);
                 xAxis.ScaleView.Zoom(posXStart, posXEnd);
             }
+        }
+        private void GridView_RowEnter(object sender, DataGridViewCellEventArgs e) 
+        {
+
         }
     }
 }

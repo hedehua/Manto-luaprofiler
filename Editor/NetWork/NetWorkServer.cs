@@ -57,6 +57,7 @@ namespace SparrowLuaProfiler
         private const int PACK_HEAD = 0x23333333;
         private static Action<Sample> m_onReceiveSample;
         private static Action m_onClientConnected;
+        private static Action m_onClientDisconnected;
         private static Queue<int> m_cmdQueue = new Queue<int>(32);
 
         public static bool CheckIsReceiving()
@@ -76,6 +77,10 @@ namespace SparrowLuaProfiler
         public static void RegisterOnClientConnected(Action onConnected) 
         {
             m_onClientConnected = onConnected;
+        }
+        public static void RegisterOnClientDisconnected(Action onDisconnected) 
+        {
+            m_onClientDisconnected = onDisconnected;
         }
 
         public static void BeginListen(string ip, int port)
@@ -211,6 +216,7 @@ namespace SparrowLuaProfiler
 #pragma warning restore 0168
                 Thread.Sleep(10);
             }
+            Console.WriteLine("<color=#00ff00>stop to listener</color>");
         }
 
         private static void DoSendMessage()
@@ -271,6 +277,15 @@ namespace SparrowLuaProfiler
             Close();
         }
 
+        public static void CloseClient() 
+        {
+            if (tcpClient != null) 
+            {
+                tcpClient.Close();
+            }
+            Close();
+        }
+
         public static void Close()
         {
             tcpClient = null;
@@ -292,6 +307,7 @@ namespace SparrowLuaProfiler
                 catch { }
                 sendThread = null;
             }
+            
         }
 
         private static Dictionary<int, string> m_strCacheDict = new Dictionary<int, string>(4096);
@@ -307,6 +323,7 @@ namespace SparrowLuaProfiler
             s.name = ReadString(br);
 
             s.costTime = br.ReadInt32();
+            s.internalCostTime = br.ReadInt32();
             s.currentLuaMemory = br.ReadInt32();
             s.currentMonoMemory = br.ReadInt32();
             int count = br.ReadUInt16();

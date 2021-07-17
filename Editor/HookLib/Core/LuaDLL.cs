@@ -316,13 +316,6 @@ namespace SparrowLuaProfiler
         public delegate int wsprintf_fun(string message);
         public static wsprintf_fun wsprintf;
 
-        public static void print(string message ) 
-        {
-            // wsprintf(message);
-            // MessageBox.Show(message);
-            File.AppendAllText("./luaprofiler.log", string.Format("{0} {1}\n", DateTime.Now.ToLocalTime().ToString(), message));
-        }
-
         public static void lua_pop(IntPtr luaState, int amount)
         {
             LuaDLL.lua_settop(luaState, -(amount) - 1);
@@ -582,33 +575,34 @@ end
         {
             try
             {
+                long currentTime = LuaProfiler.getcurrentTime;
                 int ret = lua_getinfo(luaState, "nSlt", ar);
                 if (ret > 0)
                 {
                     Object structrue = Marshal.PtrToStructure(ar, typeof(lua_Debug));
                     lua_Debug debug = (lua_Debug)structrue;
-
                     switch (debug.evt)
                     {
                         case LUA_HOOKCALL:
                             string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
-                            LuaProfiler.BeginSample(luaState, message, true);
+                            LuaProfiler.BeginSample(luaState, message, currentTime, true);
                             break;
                         case LUA_HOOKRET:
-                            LuaProfiler.EndSample(luaState);
+                            LuaProfiler.EndSample(luaState, currentTime);
                             break;
                         default: break;
                     }
                 }
-                else 
+                else
                 {
-                    print("lua_getinfo:" + ret);
+                    Utl.Log("lua_getinfo:" + ret);
                 }
             }
-            catch (Exception e) 
+            catch (Exception e)
             {
-                print(e.ToString());
+                Utl.Log(e.ToString());
             }
+            
         }
 
         public static void BindEasyHook()
@@ -1010,7 +1004,7 @@ end
             lock (m_Lock)
             {
                 IntPtr intPtr = luaL_newstate();
-                print(string.Format("luaL_newstate[{0}],hook:{1}", intPtr, isHook));
+                Utl.Log(string.Format("luaL_newstate[{0}],hook:{1}", intPtr, isHook));
                 if (isHook)
                 {
                     LuaProfiler.mainL = intPtr;

@@ -52,19 +52,22 @@ namespace SparrowLuaProfiler
         private static NetworkStream ns;
         public static MBinaryWriter bw;
         private static BinaryReader br;
-        private static int m_frameCount = 0;
+       // private static int m_frameCount = 0;
 
         #region public
         public static void ConnectServer(string host, int port)
         {
-            if (m_client != null) return;
+            Utl.Log(string.Format("connect to {0}:{1}", host, port));
+            if (m_client != null)
+            {
+                Close();
+            }
             m_client = new TcpClient();
 
             m_client.NoDelay = true;
             try
             {
                 m_client.Connect(host, port);
-                LuaDLL.print(string.Format("connect to {0}:{1}", host, port));
                 m_client.Client.SendTimeout = 30000;
                 //m_sampleDict.Clear();
                 m_strDict.Clear();
@@ -78,14 +81,14 @@ namespace SparrowLuaProfiler
             }
             catch (Exception e)
             {
-                LuaDLL.print("connect error:" + e.Message);
+                Utl.Log(e.Message);
                 Close();
             }
         }
 
         public static void Close()
         {
-            LuaDLL.print("socket closed.");
+            Utl.Log("socket closed.");
             try
             {
                 if (m_client != null)
@@ -100,7 +103,7 @@ namespace SparrowLuaProfiler
             }
             catch (Exception e)
             {
-                LuaDLL.print("close error:"+e.Message);
+                Utl.Log(e.Message);
             }
             finally
             {
@@ -174,6 +177,7 @@ namespace SparrowLuaProfiler
                 catch (ThreadAbortException e) { }
                 catch (Exception e)
                 {
+                    Utl.Log(e.ToString());
                     Close();
                 }
 #pragma warning restore 0168
@@ -220,6 +224,7 @@ namespace SparrowLuaProfiler
                 WriteString(bw, s.name);
 
                 bw.Write(s.costTime);
+                bw.Write(s.internalCostTime);
                 bw.Write(s.currentLuaMemory);
                 bw.Write(s.currentMonoMemory);
                 bw.Write((ushort)s.childs.Count);
@@ -236,6 +241,7 @@ namespace SparrowLuaProfiler
                     WriteString(bw, s0.name);
 
                     bw.Write(s0.costTime);
+                    bw.Write(s0.internalCostTime);
                     bw.Write(s0.currentLuaMemory);
                     bw.Write(s0.currentMonoMemory);
                     bw.Write((ushort)s0.childs.Count);
@@ -250,6 +256,7 @@ namespace SparrowLuaProfiler
                         WriteString(bw, s1.name);
 
                         bw.Write(s1.costTime);
+                        bw.Write(s1.internalCostTime);
                         bw.Write(s1.currentLuaMemory);
                         bw.Write(s1.currentMonoMemory);
                         bw.Write((ushort)s1.childs.Count);
@@ -264,6 +271,7 @@ namespace SparrowLuaProfiler
                             WriteString(bw, s2.name);
 
                             bw.Write(s2.costTime);
+                            bw.Write(s2.internalCostTime);
                             bw.Write(s2.currentLuaMemory);
                             bw.Write(s2.currentMonoMemory);
                             bw.Write((ushort)s2.childs.Count);
@@ -278,6 +286,7 @@ namespace SparrowLuaProfiler
                                 WriteString(bw, s3.name);
 
                                 bw.Write(s3.costTime);
+                                bw.Write(s3.internalCostTime);
                                 bw.Write(s3.currentLuaMemory);
                                 bw.Write(s3.currentMonoMemory);
                                 bw.Write((ushort)s3.childs.Count);
@@ -292,6 +301,7 @@ namespace SparrowLuaProfiler
                                     WriteString(bw, s4.name);
 
                                     bw.Write(s4.costTime);
+                                    bw.Write(s4.internalCostTime);
                                     bw.Write(s4.currentLuaMemory);
                                     bw.Write(s4.currentMonoMemory);
                                     bw.Write((ushort)s4.childs.Count);
@@ -306,6 +316,7 @@ namespace SparrowLuaProfiler
                                         WriteString(bw, s5.name);
 
                                         bw.Write(s5.costTime);
+                                        bw.Write(s5.internalCostTime);
                                         bw.Write(s5.currentLuaMemory);
                                         bw.Write(s5.currentMonoMemory);
                                         bw.Write((ushort)s5.childs.Count);
@@ -320,6 +331,7 @@ namespace SparrowLuaProfiler
                                             WriteString(bw, s6.name);
 
                                             bw.Write(s6.costTime);
+                                            bw.Write(s6.internalCostTime);
                                             bw.Write(s6.currentLuaMemory);
                                             bw.Write(s6.currentMonoMemory);
                                             bw.Write((ushort)s6.childs.Count);
@@ -334,6 +346,7 @@ namespace SparrowLuaProfiler
                                                 WriteString(bw, s7.name);
 
                                                 bw.Write(s7.costTime);
+                                                bw.Write(s7.internalCostTime);
                                                 bw.Write(s7.currentLuaMemory);
                                                 bw.Write(s7.currentMonoMemory);
                                                 bw.Write((ushort)s7.childs.Count);
@@ -348,6 +361,7 @@ namespace SparrowLuaProfiler
                                                     WriteString(bw, s8.name);
 
                                                     bw.Write(s8.costTime);
+                                                    bw.Write(s8.internalCostTime);
                                                     bw.Write(s8.currentLuaMemory);
                                                     bw.Write(s8.currentMonoMemory);
                                                     bw.Write((ushort)s8.childs.Count);
@@ -362,6 +376,7 @@ namespace SparrowLuaProfiler
                                                         WriteString(bw, s9.name);
 
                                                         bw.Write(s9.costTime);
+                                                        bw.Write(s9.internalCostTime);
                                                         bw.Write(s9.currentLuaMemory);
                                                         bw.Write(s9.currentMonoMemory);
                                                         bw.Write((ushort)s9.childs.Count);
@@ -376,6 +391,7 @@ namespace SparrowLuaProfiler
                                                             WriteString(bw, s10.name);
 
                                                             bw.Write(s10.costTime);
+                                                            bw.Write(s10.internalCostTime);
                                                             bw.Write(s10.currentLuaMemory);
                                                             bw.Write(s10.currentMonoMemory);
                                                             bw.Write((ushort)s10.childs.Count);
@@ -390,6 +406,7 @@ namespace SparrowLuaProfiler
                                                                 WriteString(bw, s11.name);
 
                                                                 bw.Write(s11.costTime);
+                                                                bw.Write(s11.internalCostTime);
                                                                 bw.Write(s11.currentLuaMemory);
                                                                 bw.Write(s11.currentMonoMemory);
                                                                 bw.Write((ushort)s11.childs.Count);
@@ -404,6 +421,7 @@ namespace SparrowLuaProfiler
                                                                     WriteString(bw, s12.name);
 
                                                                     bw.Write(s12.costTime);
+                                                                    bw.Write(s12.internalCostTime);
                                                                     bw.Write(s12.currentLuaMemory);
                                                                     bw.Write(s12.currentMonoMemory);
                                                                     bw.Write((ushort)s12.childs.Count);
@@ -418,6 +436,7 @@ namespace SparrowLuaProfiler
                                                                         WriteString(bw, s13.name);
 
                                                                         bw.Write(s13.costTime);
+                                                                        bw.Write(s13.internalCostTime);
                                                                         bw.Write(s13.currentLuaMemory);
                                                                         bw.Write(s13.currentMonoMemory);
                                                                         bw.Write((ushort)s13.childs.Count);
@@ -432,6 +451,7 @@ namespace SparrowLuaProfiler
                                                                             WriteString(bw, s14.name);
 
                                                                             bw.Write(s14.costTime);
+                                                                            bw.Write(s14.internalCostTime);
                                                                             bw.Write(s14.currentLuaMemory);
                                                                             bw.Write(s14.currentMonoMemory);
                                                                             bw.Write((ushort)s14.childs.Count);
@@ -446,6 +466,7 @@ namespace SparrowLuaProfiler
                                                                                 WriteString(bw, s15.name);
 
                                                                                 bw.Write(s15.costTime);
+                                                                                bw.Write(s15.internalCostTime);
                                                                                 bw.Write(s15.currentLuaMemory);
                                                                                 bw.Write(s15.currentMonoMemory);
                                                                                 bw.Write((ushort)s15.childs.Count);
@@ -460,6 +481,7 @@ namespace SparrowLuaProfiler
                                                                                     WriteString(bw, s16.name);
 
                                                                                     bw.Write(s16.costTime);
+                                                                                    bw.Write(s16.internalCostTime);
                                                                                     bw.Write(s16.currentLuaMemory);
                                                                                     bw.Write(s16.currentMonoMemory);
                                                                                     bw.Write((ushort)s16.childs.Count);
@@ -474,6 +496,7 @@ namespace SparrowLuaProfiler
                                                                                         WriteString(bw, s17.name);
 
                                                                                         bw.Write(s17.costTime);
+                                                                                        bw.Write(s17.internalCostTime);
                                                                                         bw.Write(s17.currentLuaMemory);
                                                                                         bw.Write(s17.currentMonoMemory);
                                                                                         bw.Write((ushort)s17.childs.Count);
@@ -488,6 +511,7 @@ namespace SparrowLuaProfiler
                                                                                             WriteString(bw, s18.name);
 
                                                                                             bw.Write(s18.costTime);
+                                                                                            bw.Write(s18.internalCostTime);
                                                                                             bw.Write(s18.currentLuaMemory);
                                                                                             bw.Write(s18.currentMonoMemory);
                                                                                             bw.Write((ushort)s18.childs.Count);
@@ -502,6 +526,7 @@ namespace SparrowLuaProfiler
                                                                                                 WriteString(bw, s19.name);
 
                                                                                                 bw.Write(s19.costTime);
+                                                                                                bw.Write(s19.internalCostTime);
                                                                                                 bw.Write(s19.currentLuaMemory);
                                                                                                 bw.Write(s19.currentMonoMemory);
                                                                                                 bw.Write((ushort)s19.childs.Count);
@@ -516,6 +541,7 @@ namespace SparrowLuaProfiler
                                                                                                     WriteString(bw, s20.name);
 
                                                                                                     bw.Write(s20.costTime);
+                                                                                                    bw.Write(s20.internalCostTime);
                                                                                                     bw.Write(s20.currentLuaMemory);
                                                                                                     bw.Write(s20.currentMonoMemory);
                                                                                                     bw.Write((ushort)s20.childs.Count);
@@ -530,6 +556,7 @@ namespace SparrowLuaProfiler
                                                                                                         WriteString(bw, s21.name);
 
                                                                                                         bw.Write(s21.costTime);
+                                                                                                        bw.Write(s21.internalCostTime);
                                                                                                         bw.Write(s21.currentLuaMemory);
                                                                                                         bw.Write(s21.currentMonoMemory);
                                                                                                         bw.Write((ushort)s21.childs.Count);
@@ -544,6 +571,7 @@ namespace SparrowLuaProfiler
                                                                                                             WriteString(bw, s22.name);
 
                                                                                                             bw.Write(s22.costTime);
+                                                                                                            bw.Write(s22.internalCostTime);
                                                                                                             bw.Write(s22.currentLuaMemory);
                                                                                                             bw.Write(s22.currentMonoMemory);
                                                                                                             bw.Write((ushort)s22.childs.Count);
@@ -558,6 +586,7 @@ namespace SparrowLuaProfiler
                                                                                                                 WriteString(bw, s23.name);
 
                                                                                                                 bw.Write(s23.costTime);
+                                                                                                                bw.Write(s23.internalCostTime);
                                                                                                                 bw.Write(s23.currentLuaMemory);
                                                                                                                 bw.Write(s23.currentMonoMemory);
                                                                                                                 bw.Write((ushort)s23.childs.Count);
@@ -572,6 +601,7 @@ namespace SparrowLuaProfiler
                                                                                                                     WriteString(bw, s24.name);
 
                                                                                                                     bw.Write(s24.costTime);
+                                                                                                                    bw.Write(s24.internalCostTime);
                                                                                                                     bw.Write(s24.currentLuaMemory);
                                                                                                                     bw.Write(s24.currentMonoMemory);
                                                                                                                     bw.Write((ushort)s24.childs.Count);
@@ -586,6 +616,7 @@ namespace SparrowLuaProfiler
                                                                                                                         WriteString(bw, s25.name);
 
                                                                                                                         bw.Write(s25.costTime);
+                                                                                                                        bw.Write(s25.internalCostTime);
                                                                                                                         bw.Write(s25.currentLuaMemory);
                                                                                                                         bw.Write(s25.currentMonoMemory);
                                                                                                                         bw.Write((ushort)s25.childs.Count);
@@ -600,6 +631,7 @@ namespace SparrowLuaProfiler
                                                                                                                             WriteString(bw, s26.name);
 
                                                                                                                             bw.Write(s26.costTime);
+                                                                                                                            bw.Write(s26.internalCostTime);
                                                                                                                             bw.Write(s26.currentLuaMemory);
                                                                                                                             bw.Write(s26.currentMonoMemory);
                                                                                                                             bw.Write((ushort)s26.childs.Count);
@@ -614,6 +646,7 @@ namespace SparrowLuaProfiler
                                                                                                                                 WriteString(bw, s27.name);
 
                                                                                                                                 bw.Write(s27.costTime);
+                                                                                                                                bw.Write(s27.internalCostTime);
                                                                                                                                 bw.Write(s27.currentLuaMemory);
                                                                                                                                 bw.Write(s27.currentMonoMemory);
                                                                                                                                 bw.Write((ushort)s27.childs.Count);

@@ -114,7 +114,7 @@ namespace SparrowLuaProfiler
                 return System.Diagnostics.Stopwatch.GetTimestamp();
             }
         }
-        public static void BeginSample(IntPtr luaState, string name, bool needShow = false)
+        public static void BeginSample(IntPtr luaState, string name, long currentTime, bool needShow = false) 
         {
             if (!IsMainThread)
             {
@@ -126,13 +126,15 @@ namespace SparrowLuaProfiler
                 Sample sample = Sample.Create(0, (int)memoryCount, name);
                 sample.needShow = needShow;
                 beginSampleMemoryStack.Push(sample);
-                sample.currentTime = getcurrentTime;
+                sample.currentTime = currentTime;
+                sample.internalCostTime = (int)(getcurrentTime - currentTime);
             }
             catch
             {
             }
         }
         private static List<Sample> popChilds = new List<Sample>();
+        [Obsolete]
         public static void PopAllSampleWhenLateUpdate(IntPtr luaState)
         {
             while(beginSampleMemoryStack.Count > 0)
@@ -177,9 +179,8 @@ namespace SparrowLuaProfiler
             }
             beginSampleMemoryStack.Clear();
         }
-        public static void EndSample(IntPtr luaState)
+        public static void EndSample(IntPtr luaState, long currentTime) 
         {
-            long currentTime = getcurrentTime;
             if (!IsMainThread)
             {
                 return;
@@ -193,7 +194,6 @@ namespace SparrowLuaProfiler
             long nowMonoCount = GC.GetTotalMemory(false);
             Sample sample = beginSampleMemoryStack.Pop();
 
-            sample.costTime = (int)(currentTime - sample.currentTime);
             var monoGC = nowMonoCount - sample.currentMonoMemory;
             var luaGC = nowMemoryCount - sample.currentLuaMemory;
             sample.currentLuaMemory = (int)nowMemoryCount;
@@ -221,7 +221,11 @@ namespace SparrowLuaProfiler
                 return;
             }
             sample.fahter = beginSampleMemoryStack.Count > 0 ? beginSampleMemoryStack.Peek() : null;
-         
+
+            // 该尽可能靠后，以统计更多的内部消耗
+            sample.costTime = (int)(getcurrentTime - sample.currentTime);
+            sample.internalCostTime += (int)(getcurrentTime - currentTime);
+
             if (beginSampleMemoryStack.Count == 0)
             {
                 NetWorkClient.SendMessage(sample);
@@ -229,7 +233,7 @@ namespace SparrowLuaProfiler
             //释放掉被累加的Sample
             if (beginSampleMemoryStack.Count != 0 && sample.fahter == null)
             {
-                LuaDLL.print(string.Format("sample[%s] restore.", sample.name));
+                Utl.Log(string.Format("sample[%s] restore.", sample.name));
                 sample.Restore();
             }
         }

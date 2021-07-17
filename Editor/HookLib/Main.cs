@@ -57,7 +57,7 @@ namespace SparrowLuaProfiler
 
         public void Uninstall()
         {
-            MessageBox.Show("uninstall");
+            Utl.Log("uninstall");
             NativeAPI.LhUninstallAllHooks();
         }
 
@@ -78,14 +78,14 @@ namespace SparrowLuaProfiler
             frameCount = 0;
             try
             {
-                LuaDLL.print("HookLib inject success.");
+                Utl.OnApplicationLaunch();
                 LuaDLL.Uninstall();
                 LuaDLL.HookLoadLibrary();
                 LuaDLL.BindEasyHook();
             }
             catch (Exception ex)
             {
-                MessageBox.Show("exception: "+ex.Message);
+                Utl.Log(ex.Message);
                 return;
             }
 

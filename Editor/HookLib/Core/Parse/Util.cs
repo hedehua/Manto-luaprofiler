@@ -37,6 +37,7 @@ __________#_______####_______####______________
 #define UNILUA_ASSERT
 
 using System;
+using System.IO;
 
 namespace SparrowLuaProfiler
 {
@@ -48,6 +49,24 @@ namespace SparrowLuaProfiler
         private static void Throw(params string[] msgs)
         {
             throw new Exception(String.Join("", msgs));
+        }
+
+        private static string GetLogPath(string timestamp = "")
+        {
+            return string.Format("{0}/luaprofiler{1}.log", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), timestamp);
+        }
+
+        public static void Log(string message)
+        {
+            File.AppendAllText(GetLogPath(), string.Format("{0} {1}\n", DateTime.Now.ToLocalTime().ToString(), message));
+        }
+        public static void OnApplicationLaunch()
+        {
+            if (File.Exists(GetLogPath()))
+            {
+                File.Move(GetLogPath(), GetLogPath(DateTime.Now.ToString("yyyy.MM.dd-hh.mm.ss")));
+            }
+            Utl.Log("HookLib inject success.");
         }
 
         public static void Assert(bool condition)
