@@ -431,6 +431,22 @@ namespace SparrowLuaProfiler
             s.captureUrl = captureUrl;
             return s;
         }
+        /// <summary>
+        /// 排除hook对性能的干扰
+        /// </summary>
+        /// <returns></returns>
+        public int Refix() 
+        {
+            int cost = internalCostTime;
+            for (int i = 0; i < childs.Count; i++) 
+            {
+                Sample child = childs[i];
+                cost += child.Refix();
+            }
+            costTime -= cost;
+            return cost;
+        }
+
         #endregion
 
         #region 序列化

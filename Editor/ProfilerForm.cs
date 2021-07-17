@@ -44,6 +44,8 @@ namespace SparrowLuaProfiler
             private MList<Sample> samples;
             public Sample AddSample(Sample sample)
             {
+                sample.Refix();
+
                 if (dict == null) dict = new Dictionary<string, Sample>();
                 if (samples == null) samples = new MList<Sample>(16);
                 Sample s;
@@ -129,22 +131,24 @@ namespace SparrowLuaProfiler
         }
 
         const int MaxMS = 10000;
+        double maxCostTime = 0;
         private void FillTimeline()
         {
-            GetOrCreateSeries("GT");
+            GetOrCreateTimelineNode("GT");
             for (; lastPaintIndex < frames.Count; lastPaintIndex++)
             {
                 foreach (string name in timelineDic.Keys)
                 {
-                    Series series = GetOrCreateSeries(name);
+                    Series series = GetOrCreateTimelineNode(name);
                     Frame frame = frames[lastPaintIndex];
-                    double costTime = GetFunctionCostTime(frame, name);
+                    double costTime = GetFrameCostTime(frame, name);
                     series.Points.AddXY(lastPaintIndex, costTime);
+                    maxCostTime = costTime > maxCostTime ? costTime : maxCostTime;
                 }
             }
 
         }
-        private Series GetOrCreateSeries(string name)
+        private Series GetOrCreateTimelineNode(string name)
         {
             Series series1;
             if (timelineDic.TryGetValue(name,out series1)) 
@@ -165,7 +169,7 @@ namespace SparrowLuaProfiler
             return series;
         }
 
-        private double GetFunctionCostTime(Frame frame, string name = null)
+        private double GetFrameCostTime(Frame frame, string name = null)
         {
             MList<Sample> samples = frame.GetSamples();
             int costTime = 0;
@@ -219,7 +223,7 @@ namespace SparrowLuaProfiler
             treeNode.DefaultCellStyle.Font = boldFont;
             float totoalTime = (float)sampleNood.costTime / MaxMS;
             float intrnalCostTime = (float)sampleNood.internalCostTime / MaxMS;
-            treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), intrnalCostTime.ToString("f3"),  (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC));
+            treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC));
             sampleNood.luaGC = 0;
             Sample[] samples = sampleNood.childs.ToArray();
             Array.Sort(samples,SortSample);
@@ -316,6 +320,7 @@ namespace SparrowLuaProfiler
         private void ClearAll()
         {
             lastPaintIndex = 0;
+            maxCostTime = 0;
             queue.Clear();
             frames.Clear();
             timelineDic.Clear();
@@ -474,14 +479,19 @@ namespace SparrowLuaProfiler
                 OnSelectedFrameChanged(pointIndexOnMouseOver);
                 return;
             }
+            
             Chart chart = (Chart)sender;
-            HitTestResult[] results = chart.HitTest(e.X, chart.Size.Height -18, true, ChartElementType.DataPoint);
-            foreach (HitTestResult result in results)
+            HitTestResult test = chart.HitTest(e.X, e.Y);
+            if (test.ChartElementType == ChartElementType.PlottingArea || test.ChartElementType == ChartElementType.Gridlines)
             {
-                if (result.PointIndex >= 0)
+                HitTestResult[] results = chart.HitTest(e.X, chart.Size.Height - 18, true, ChartElementType.DataPoint);
+                foreach (HitTestResult result in results)
                 {
-                    int frameIndex = result.PointIndex;
-                    OnSelectedFrameChanged(frameIndex);
+                    if (result.ChartElementType == ChartElementType.DataPoint && result.PointIndex >= 0)
+                    {
+                        int frameIndex = result.PointIndex;
+                        OnSelectedFrameChanged(frameIndex);
+                    }
                 }
             }
         }
@@ -490,7 +500,12 @@ namespace SparrowLuaProfiler
         {
             Chart chart = (Chart)sender;
             Axis xAxis = chart.ChartAreas[0].AxisX;
+            Axis yAxis = chart.ChartAreas[0].AxisY;
 
+            {
+                yAxis.Maximum = Math.Min(Math.Max(e.Delta > 0 ? yAxis.Maximum -= 0.1 : yAxis.Maximum += 0.1, 1), Math.Ceiling(maxCostTime));
+            }
+      
             {
                 double xMin = xAxis.ScaleView.ViewMinimum;
                 double xMax = xAxis.ScaleView.ViewMaximum;

@@ -46,8 +46,6 @@ namespace SparrowLuaProfiler
             this.timer1 = new System.Windows.Forms.Timer(this.components);
             this.attachmentColumn = new System.Windows.Forms.DataGridViewImageColumn();
             this.overview = new AdvancedDataGridView.TreeGridColumn();
-            //this.totalLuaMemory = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            this.selfCostTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.luaGC = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.averageTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.totalTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -88,7 +86,7 @@ namespace SparrowLuaProfiler
 
             area.AxisX.ScrollBar.Enabled = true;
             area.AxisX.ScrollBar.ButtonColor = System.Drawing.Color.LightGray;
-            area.AxisX.ScrollBar.Size = 8;
+            area.AxisX.ScrollBar.Size = 12;
             area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.None;
             area.AxisX.ScrollBar.IsPositionedInside = true;
             area.AxisX.LabelStyle.Enabled = false;
@@ -100,7 +98,10 @@ namespace SparrowLuaProfiler
             area.AxisY.LabelStyle.Enabled = true;
             area.AxisY.IsMarginVisible = false;
             area.AxisY.Minimum = 0.0f;
-            area.AxisY.Maximum = 10.0f;
+            area.AxisY.Maximum = 5.0f;
+            area.AxisY.ScaleView.Zoomable = true;
+            area.AxisY.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.None;
+            area.AxisY.IsLabelAutoFit = false;
 
             // tvTaskList
             // 
@@ -118,9 +119,7 @@ namespace SparrowLuaProfiler
             this.tvTaskList.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
             this.attachmentColumn,
             this.overview,
-            //this.totalLuaMemory,
             this.totalTime,
-            this.selfCostTime,
             this.averageTime,
             this.totalCalls,
             this.luaGC});
@@ -130,7 +129,6 @@ namespace SparrowLuaProfiler
             this.tvTaskList.Name = "tvTaskList";
             this.tvTaskList.RowHeadersVisible = false;
             this.tvTaskList.RowHeadersWidth = 20;
-        //    this.tvTaskList.DefaultCellStyle.Font = new System.Drawing.Font(System.Windows.Forms.DataGridView.DefaultFont, System.Drawing.FontStyle.Underline);
 
             this.tvTaskList.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.tvTaskList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
@@ -211,7 +209,7 @@ namespace SparrowLuaProfiler
             // 
             // timer1
             // 
-            this.timer1.Interval = 1000;
+            this.timer1.Interval = 100; // 100ms
             this.timer1.Tick += new System.EventHandler(this.Timer1_Tick);
             // 
             // attachmentColumn
@@ -242,12 +240,7 @@ namespace SparrowLuaProfiler
             this.luaGC.HeaderText = "GC";
             this.luaGC.Name = "luaGC";
             this.luaGC.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-            // 
-            // totalLuaMemory
-            // 
-            this.selfCostTime.HeaderText = "Self(ms)";
-            this.selfCostTime.Name = "internalCostTime";
-            this.selfCostTime.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+
             // 
             // averageTime
             // 
@@ -311,7 +304,6 @@ namespace SparrowLuaProfiler
         //private System.Windows.Forms.DataGridViewTextBoxColumn totalLuaMemory;
 
         private System.Windows.Forms.DataGridViewTextBoxColumn luaGC;
-        private System.Windows.Forms.DataGridViewTextBoxColumn selfCostTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn averageTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalCalls;

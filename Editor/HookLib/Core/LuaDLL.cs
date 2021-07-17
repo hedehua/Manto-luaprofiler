@@ -579,7 +579,7 @@ end
                 int ret = lua_getinfo(luaState, "nSlt", ar);
                 if (ret > 0)
                 {
-                    Object structrue = Marshal.PtrToStructure(ar, typeof(lua_Debug));
+                    object structrue = Marshal.PtrToStructure(ar, typeof(lua_Debug));
                     lua_Debug debug = (lua_Debug)structrue;
                     switch (debug.evt)
                     {
