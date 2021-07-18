@@ -114,7 +114,7 @@ namespace SparrowLuaProfiler
                 return System.Diagnostics.Stopwatch.GetTimestamp();
             }
         }
-        public static void BeginSample(IntPtr luaState, string name, long currentTime, bool needShow = false) 
+        public static void BeginSample(IntPtr luaState, string name, long currentTime) 
         {
             if (!IsMainThread)
             {
@@ -124,7 +124,6 @@ namespace SparrowLuaProfiler
             {
                 long memoryCount = LuaDLL.GetLuaMemory(luaState);
                 Sample sample = Sample.Create(0, (int)memoryCount, name);
-                sample.needShow = needShow;
                 beginSampleMemoryStack.Push(sample);
                 sample.currentTime = currentTime;
                 sample.internalCostTime = (int)(getcurrentTime - currentTime);
@@ -133,52 +132,7 @@ namespace SparrowLuaProfiler
             {
             }
         }
-        private static List<Sample> popChilds = new List<Sample>();
-        [Obsolete]
-        public static void PopAllSampleWhenLateUpdate(IntPtr luaState)
-        {
-            while(beginSampleMemoryStack.Count > 0)
-            {
-                var item = beginSampleMemoryStack.Pop();
-                if (item.fahter == null)
-                {
-                    if (beginSampleMemoryStack.Count > 0)
-                    {
-                        long mono_gc = 0;
-                        long lua_gc = 0;
-                        long cost_time = 0;
-                        for (int i = 0, imax = item.childs.Count; i < imax; i++)
-                        {
-                            Sample c = item.childs[i];
-                            lua_gc += c.costLuaGC;
-                            mono_gc += c.costMonoGC;
-                            cost_time += c.costTime;
-                        }
-                        item.costLuaGC = (int)Math.Max(lua_gc, 0);
-                        item.costMonoGC = (int)Math.Max(mono_gc, 0);
-                        item.costTime = (int)cost_time;
-
-                        popChilds.Add(item);
-                    }
-                    else
-                    {
-                        item.costLuaGC = (int)LuaDLL.GetLuaMemory(luaState) - item.currentLuaMemory;
-                        item.costTime = (int)(getcurrentTime - item.currentTime);
-                        item.costMonoGC = (int)(GC.GetTotalMemory(false) - item.currentMonoMemory);
-                        item.currentLuaMemory = (int)LuaDLL.GetLuaMemory(luaState);
-                        for (int i = 0, imax = popChilds.Count; i < imax; i++)
-                        {
-                            popChilds[i].fahter = item;
-                        }
-                        popChilds.Clear();
-                     
-                        NetWorkClient.SendMessage(item);
-                    }
-                    //item.Restore();
-                }
-            }
-            beginSampleMemoryStack.Clear();
-        }
+    
         public static void EndSample(IntPtr luaState, long currentTime) 
         {
             if (!IsMainThread)
@@ -228,7 +182,7 @@ namespace SparrowLuaProfiler
 
             if (beginSampleMemoryStack.Count == 0)
             {
-                NetWorkClient.SendMessage(sample);
+                NetWorkClient.AddSample(sample);
             }
             //释放掉被累加的Sample
             if (beginSampleMemoryStack.Count != 0 && sample.fahter == null)

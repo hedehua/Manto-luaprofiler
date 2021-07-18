@@ -58,7 +58,7 @@ namespace SparrowLuaProfiler
 
         public static void Log(string message)
         {
-            File.AppendAllText(GetLogPath(), string.Format("{0} {1}\n", DateTime.Now.ToLocalTime().ToString(), message));
+            File.AppendAllText(GetLogPath(), string.Format("{0} {1}\n", DateTime.Now.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff"), message));
         }
         public static void OnApplicationLaunch()
         {

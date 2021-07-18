@@ -81,7 +81,8 @@ namespace SparrowLuaProfiler
         public string source;
         public int currentline;     /* (l) */
         public int linedefined;     /* (S) */
-        public int lastlinedefined;	/* (S) */
+        public int lastlinedefined; /* (S) */
+#pragma warning disable 0169
         byte nups;                  /* (u) number of upvalues */
         byte nparams;               /* (u) number of parameters */
         byte isvararg;              /* (u) */
@@ -90,6 +91,7 @@ namespace SparrowLuaProfiler
         string short_src;           /* (S) */
         /* private part */
         IntPtr i_ci;                /* active function */
+#pragma warning restore 0169
     }
 
     public class LuaIndexes
@@ -597,7 +599,7 @@ end
                 {
                     case LUA_HOOKCALL:
                         string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
-                        LuaProfiler.BeginSample(luaState, message, currentTime, true);
+                        LuaProfiler.BeginSample(luaState, message, currentTime);
                         break;
                     case LUA_HOOKRET:
                         LuaProfiler.EndSample(luaState, currentTime);

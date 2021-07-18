@@ -90,6 +90,7 @@ namespace SparrowLuaProfiler
 
             return result;
         }
+
         #endregion
     }
 
@@ -175,12 +176,12 @@ namespace SparrowLuaProfiler
 
     public class Sample : NetBase
     {
+        public long seq;
         public int currentLuaMemory;
         public int currentMonoMemory;
         public long currentTime;
 
         public int calls;
-        public int frameCount;
 
         public int costLuaGC;
         public int costMonoGC;
@@ -191,7 +192,6 @@ namespace SparrowLuaProfiler
         public MList<Sample> childs = new MList<Sample>(16);
         public string captureUrl = null;
         private string _fullName;
-        public bool needShow = false;
 
         public int luaGC;
         public bool isCopy = false;
@@ -209,6 +209,11 @@ namespace SparrowLuaProfiler
                 }
                 return Math.Max(result, 0);
             }
+        }
+
+        public bool childrenFilled 
+        {
+            get { return childs.Count > 0; }
         }
 
         public long copySelfMonoGC = -1;
@@ -234,12 +239,6 @@ namespace SparrowLuaProfiler
             bool result = false;
             do
             {
-                if (needShow)
-                {
-                    result = true;
-                    break;
-                }
-
                 if (costLuaGC != 0)
                 {
                     result = true;
@@ -341,9 +340,13 @@ namespace SparrowLuaProfiler
         #region pool
         private static Dictionary<object, Dictionary<object, string>> m_fullNamePool = new Dictionary<object, Dictionary<object, string>>();
         private static ObjectPool<Sample> samplePool = new ObjectPool<Sample>(4096);
+        
+        public static long ID_SEED = 100;
+        private static long id_crease = ID_SEED;
         public static Sample Create()
         {
             Sample s = samplePool.GetObject();
+            s.seq = ++id_crease;
             return s;
         }
 
@@ -352,11 +355,11 @@ namespace SparrowLuaProfiler
             Sample s = samplePool.GetObject();
             lock (s)
             {
+                s.seq = ++id_crease;
                 s.calls = 1;
                 s.currentTime = time;
                 s.currentLuaMemory = memory;
                 s.currentMonoMemory = (int)GC.GetTotalMemory(false);
-                s.frameCount = Main.frameCount;
                 s.costLuaGC = 0;
                 s.costMonoGC = 0;
                 s.name = name;
@@ -380,6 +383,7 @@ namespace SparrowLuaProfiler
                     childs[i].Restore();
                 }
                 _fullName = null;
+                seq = 0;
                 childs.Clear();
                 samplePool.Store(this);
             }
@@ -405,25 +409,21 @@ namespace SparrowLuaProfiler
                 }
             }
         }
-
-        public Sample Clone()
+        
+        /// <summary>
+        /// 浅拷贝，不拷贝children
+        /// </summary>
+        /// <returns></returns>
+        public Sample Clone() 
         {
             Sample s = new Sample();
-
+            s.seq = seq;
             s.calls = calls;
-            s.frameCount = frameCount;
             s.costMonoGC = costMonoGC;
             s.costLuaGC = costLuaGC;
             s.name = name;
             s.costTime = costTime;
             s.internalCostTime = internalCostTime;
-
-            int childCount = childs.Count;
-            for (int i = 0; i < childCount; i++)
-            {
-                Sample child = childs[i].Clone();
-                child.fahter = s;
-            }
 
             s.currentLuaMemory = currentLuaMemory;
             s.currentMonoMemory = currentMonoMemory;

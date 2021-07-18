@@ -147,7 +147,16 @@ namespace SparrowLuaProfiler
             if (m_onClientConnected != null) m_onClientConnected();
         }
 
-        // 0获取ref表，1 记录下当前全局表状态，2 diff 当前状态与历史记录, 3 执行完lua的gc在diff
+        /// <summary>
+        /// 发送命令
+        /// </summary>
+        /// <param name="cmd"></param>
+        // 0 handshake,
+        // 1 获取ref表
+        // 2 记录下当前全局表状态
+        // 3 diff 当前状态与历史记录
+        // 4 执行完lua的gc在diff
+        // 100+ sample detail
         public static void SendCmd(int cmd)
         {
             lock (m_cmdQueue)
@@ -191,6 +200,10 @@ namespace SparrowLuaProfiler
                                                 m_onReceiveSample(s);
                                             }
                                         }
+                                        break;
+                                    case 1:
+                                            break;
+                                    case 2:
                                         break;
                                 }
 
@@ -316,16 +329,18 @@ namespace SparrowLuaProfiler
             Sample s = null;
 
             s = new Sample();
+            s.seq = br.ReadInt64();
+            s.currentTime = br.ReadInt64();
             s.calls = br.ReadInt32();
-            s.frameCount = br.ReadInt32();
             s.costLuaGC = br.ReadInt32();
             s.costMonoGC = br.ReadInt32();
             s.name = ReadString(br);
 
             s.costTime = br.ReadInt32();
-            s.internalCostTime = br.ReadInt32();
-            s.currentLuaMemory = br.ReadInt32();
-            s.currentMonoMemory = br.ReadInt32();
+    
+            //s.currentLuaMemory = br.ReadInt32();
+            //s.currentMonoMemory = br.ReadInt32();
+
             int count = br.ReadUInt16();
             for (int i = 0, imax = count; i < imax; i++)
             {
@@ -414,8 +429,8 @@ namespace SparrowLuaProfiler
         {
             string result = null;
 
-            bool isRef = br.ReadBoolean();
-            int index = br.ReadInt32();
+            bool isRef = br.ReadByte() == 1 ? true : false;
+            int index = br.ReadInt16();
             if (!isRef)
             {
                 int len = br.ReadInt32();

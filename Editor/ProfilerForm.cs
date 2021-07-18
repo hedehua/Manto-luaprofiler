@@ -43,27 +43,37 @@ namespace SparrowLuaProfiler
         {
             private Dictionary<string, Sample> dict;
             private MList<Sample> samples;
-            public Sample AddSample(Sample sample)
+            public bool AddSample(Sample sample)
             {
-                sample.Refix();
-
                 if (dict == null) dict = new Dictionary<string, Sample>();
                 if (samples == null) samples = new MList<Sample>(16);
-                Sample s;
-                if (dict.TryGetValue(sample.name, out s))
+                if (dict.ContainsKey(sample.name))
                 {
-                    s.AddSample(sample);
-                    return s;
+                    return false;
+                }
+                long currentTime = GetCurrentTime();
+                if (sample.currentTime < currentTime) 
+                {
+                    return false;
+                }
+                if (currentTime > 0 && sample.currentTime - currentTime > 300000)   // 30ms
+                {
+                    return false;
                 }
 
                 dict.Add(sample.name, sample);
                 samples.Add(sample);
-                return sample;
+                return true ;
             }
             public void Clear()
             {
                 if (dict != null) dict.Clear();
                 if (samples != null) samples.Clear();
+            }
+            public long GetCurrentTime() 
+            {
+                if (samples.Count == 0) return 0;
+                return samples[0].currentTime;
             }
             public MList<Sample> GetSamples() { return samples; }
         }
@@ -73,10 +83,12 @@ namespace SparrowLuaProfiler
         Dictionary<string, TreeGridNode> nodeDict = new Dictionary<string, TreeGridNode>();
         List<Frame> frames = new List<Frame>();
         Dictionary<string, Series> timelineDic = new Dictionary<string, Series>();
+        List<Sample> sampleRequest = new List<Sample>();
 
         private Font boldFont;
-        private int selectedFrame;
+        private int selectedFrameIndex =-1;
         private int lastPaintIndex = 0;
+        Sample[] selectedSamples;
         private void OnReceiveSample(Sample sample)
         {
             lock (queue)
@@ -97,8 +109,8 @@ namespace SparrowLuaProfiler
 
         private void OnSelectedFrameChanged(int index)
         {
-            if (index == selectedFrame) return;
-            selectedFrame = index;
+            if (index == selectedFrameIndex) return;
+            selectedFrameIndex = index;
             ClearFrameInfo();
             FillFormInfo();
         }
@@ -111,15 +123,15 @@ namespace SparrowLuaProfiler
 
         private void FillFormInfo()
         {
-            if (selectedFrame < 0 || selectedFrame >= frames.Count) return;
+            if (selectedFrameIndex < 0 || selectedFrameIndex >= frames.Count) return;
 
-            Frame frame = frames[selectedFrame];
-            Sample[] samples = frame.GetSamples().ToArray();
-            if (samples == null) return;
-            Array.Sort(samples, SortSample);
-            for (int i = 0;i< samples.Length;i++)
+            Frame frame = frames[selectedFrameIndex];
+            selectedSamples = frame.GetSamples().ToArray();
+            if (selectedSamples == null) return;
+            Array.Sort(selectedSamples, SortSample);
+            for (int i = 0;i< selectedSamples.Length;i++)
             {
-                Sample item = samples[i];
+                Sample item = selectedSamples[i];
                 TreeGridNode treeNode;
                 if (!nodeDict.TryGetValue(item.fullName, out treeNode))
                 {
@@ -131,12 +143,24 @@ namespace SparrowLuaProfiler
             tvTaskList.Refresh();
         }
 
+        private void RefreshFormInfo(Sample sample) 
+        {
+            TreeGridNode treeNode;
+            if (nodeDict.TryGetValue(sample.fullName, out treeNode))
+            {
+                treeNode.Nodes.Clear();
+                DoFillChildFormInfo(sample, treeNode);
+                tvTaskList.Refresh();
+            }
+        }
+
         const int MaxMS = 10000;
         double maxCostTime = 0;
         private void FillTimeline()
         {
             GetOrCreateTimelineNode("GT");
-            for (; lastPaintIndex < frames.Count; lastPaintIndex++)
+            // 少画一个，保证数据已经全部填充
+            for (; lastPaintIndex < frames.Count - 1; lastPaintIndex++) 
             {
                 foreach (string name in timelineDic.Keys)
                 {
@@ -174,7 +198,7 @@ namespace SparrowLuaProfiler
         {
             MList<Sample> samples = frame.GetSamples();
             int costTime = 0;
-            for(int i = 0;i< samples.Count;i++)
+            for (int i = 0; i < samples.Count; i++) 
             {
                 Sample sample = samples[i];
                 if (name == "GT" || sample.name == name)
@@ -320,6 +344,7 @@ namespace SparrowLuaProfiler
         }
         private void ClearAll()
         {
+            selectedFrameIndex = -1;
             lastPaintIndex = 0;
             maxCostTime = 0;
             queue.Clear();
@@ -331,6 +356,7 @@ namespace SparrowLuaProfiler
         }
         private void ClearFrameInfo() 
         {
+            selectedSamples = null;
             nodeDict.Clear();
             tvTaskList.Nodes.Clear();
         }
@@ -444,17 +470,32 @@ namespace SparrowLuaProfiler
                 while (queue.Count > 0)
                 {
                     Sample sample = queue.Dequeue();
-                    int frameCount = sample.frameCount;
+
+                    // 这是一份详细数据，所以原始数据中一定存在
+                    if (sample.childrenFilled) 
+                    {
+                        for (int i = sampleRequest.Count - 1; i >= 0; i--) 
+                        {
+                            if (sampleRequest[i].seq == sample.seq) 
+                            {
+                                sampleRequest[i].childs = sample.childs;
+                                sample = sampleRequest[i];
+                                sampleRequest.RemoveAt(i);
+                            }
+                        }
+                        RefreshFormInfo(sample);
+                    }
+
                     Frame frame = null;
-                    if (frameCount >= frames.Count)
+                    // 尝试加载最后一个帧
+                    if (frames.Count > 0) 
                     {
-                        frame = new Frame();
-                        frames.Add(frame);
+                        frame = frames[frames.Count - 1];
+                        if (frame.AddSample(sample)) continue;
                     }
-                    else
-                    {
-                        frame = frames[frameCount];
-                    }
+
+                    frame = new Frame();
+                    frames.Add(frame);
                     frame.AddSample(sample);
 
                 }
@@ -504,7 +545,7 @@ namespace SparrowLuaProfiler
             Axis yAxis = chart.ChartAreas[0].AxisY;
 
             {
-                yAxis.Maximum = Math.Min(Math.Max(e.Delta > 0 ? yAxis.Maximum -= 0.1 : yAxis.Maximum += 0.1, 1), Math.Ceiling(maxCostTime));
+                yAxis.Maximum = Math.Min(Math.Max(e.Delta > 0 ? yAxis.Maximum -= 0.25 : yAxis.Maximum += 0.25, 1), Math.Ceiling(maxCostTime < 1 ? 1 : maxCostTime));
             }
       
             {
@@ -522,7 +563,26 @@ namespace SparrowLuaProfiler
         }
         private void GridView_RowEnter(object sender, DataGridViewCellEventArgs e) 
         {
-
+            Console.WriteLine("Row Enter "+e.RowIndex);
+            if (selectedSamples == null || selectedFrameIndex < 0 || selectedFrameIndex > frames.Count) 
+            {
+                return;
+            }
+            Frame frame = frames[selectedFrameIndex];
+            MList<Sample> samples = frame.GetSamples();
+            if (e.RowIndex >= 0 && e.RowIndex < selectedSamples.Length)
+            {
+                Sample sample = selectedSamples[e.RowIndex];
+                if (sample.childrenFilled) return;
+                sampleRequest.Add(sample);
+                if (sample.seq > int.MaxValue)
+                {
+                    // hard code. temperory convert to int.
+                    Console.WriteLine("seq is to large,out of range.");
+                    return;
+                }
+                NetWorkServer.SendCmd((int)sample.seq);
+            }
         }
     }
 }
