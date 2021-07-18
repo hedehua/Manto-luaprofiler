@@ -34,8 +34,9 @@ namespace SparrowLuaProfiler
 
         protected override void OnClosed(EventArgs e)
         {
-            Thread.Sleep(1000);
+            Thread.Sleep(100);
             base.OnClosed(e);
+            System.Environment.Exit(0);
         }
 
         class Frame
@@ -223,7 +224,7 @@ namespace SparrowLuaProfiler
             treeNode.DefaultCellStyle.Font = boldFont;
             float totoalTime = (float)sampleNood.costTime / MaxMS;
             float intrnalCostTime = (float)sampleNood.internalCostTime / MaxMS;
-            treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC));
+            treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC), GetMemoryString(sampleNood.costMonoGC));
             sampleNood.luaGC = 0;
             Sample[] samples = sampleNood.childs.ToArray();
             Array.Sort(samples,SortSample);

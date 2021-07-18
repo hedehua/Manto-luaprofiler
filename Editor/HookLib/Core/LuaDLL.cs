@@ -79,9 +79,17 @@ namespace SparrowLuaProfiler
         public string namewhat;
         public string what;
         public string source;
-        public int currentline;    /* (l) */
-        public int linedefined;    /* (S) */
+        public int currentline;     /* (l) */
+        public int linedefined;     /* (S) */
         public int lastlinedefined;	/* (S) */
+        byte nups;                  /* (u) number of upvalues */
+        byte nparams;               /* (u) number of parameters */
+        byte isvararg;              /* (u) */
+        byte istailcall;            /* (t) */
+        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 60)]
+        string short_src;           /* (S) */
+        /* private part */
+        IntPtr i_ci;                /* active function */
     }
 
     public class LuaIndexes
@@ -576,27 +584,27 @@ end
             try
             {
                 long currentTime = LuaProfiler.getcurrentTime;
-                int ret = lua_getinfo(luaState, "nSlt", ar);
-                if (ret > 0)
-                {
-                    object structrue = Marshal.PtrToStructure(ar, typeof(lua_Debug));
-                    lua_Debug debug = (lua_Debug)structrue;
-                    switch (debug.evt)
-                    {
-                        case LUA_HOOKCALL:
-                            string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
-                            LuaProfiler.BeginSample(luaState, message, currentTime, true);
-                            break;
-                        case LUA_HOOKRET:
-                            LuaProfiler.EndSample(luaState, currentTime);
-                            break;
-                        default: break;
-                    }
-                }
-                else
+
+                int ret = lua_getinfo(luaState, "nS", ar);
+                if (ret == 0) 
                 {
                     Utl.Log("lua_getinfo:" + ret);
+                    return;
                 }
+              
+                lua_Debug debug = (lua_Debug)Marshal.PtrToStructure(ar, typeof(lua_Debug));
+                switch (debug.evt)
+                {
+                    case LUA_HOOKCALL:
+                        string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
+                        LuaProfiler.BeginSample(luaState, message, currentTime, true);
+                        break;
+                    case LUA_HOOKRET:
+                        LuaProfiler.EndSample(luaState, currentTime);
+                        break;
+                    default: break;
+                }
+              
             }
             catch (Exception e)
             {

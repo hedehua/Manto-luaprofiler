@@ -47,6 +47,7 @@ namespace SparrowLuaProfiler
             this.attachmentColumn = new System.Windows.Forms.DataGridViewImageColumn();
             this.overview = new AdvancedDataGridView.TreeGridColumn();
             this.luaGC = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            this.monoGC = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.averageTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.totalTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.totalCalls = new System.Windows.Forms.DataGridViewTextBoxColumn();
@@ -64,7 +65,7 @@ namespace SparrowLuaProfiler
             | System.Windows.Forms.AnchorStyles.Right)));
 
             System.Windows.Forms.DataVisualization.Charting.ChartArea area = this.chart1.ChartAreas.Add("ChartArea");
-
+    
             this.chart1.MouseWheel += Chart1_MouseWheel;
             this.chart1.MouseClick += Chart1_MouseClick;
             this.chart1.GetToolTipText += Chart1_GetToolTipText;
@@ -122,7 +123,8 @@ namespace SparrowLuaProfiler
             this.totalTime,
             this.averageTime,
             this.totalCalls,
-            this.luaGC});
+            this.luaGC,
+            this.monoGC});
             this.tvTaskList.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.tvTaskList.ImageList = null;
             this.tvTaskList.Location = new System.Drawing.Point(1, 32+128);
@@ -242,6 +244,13 @@ namespace SparrowLuaProfiler
             this.luaGC.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
 
             // 
+            // monoGC
+            // 
+            this.monoGC.HeaderText = "MonoGC";
+            this.monoGC.Name = "monoGC";
+            this.monoGC.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+
+            // 
             // averageTime
             // 
             this.averageTime.HeaderText = "AverageTime(ms)";
@@ -304,6 +313,7 @@ namespace SparrowLuaProfiler
         //private System.Windows.Forms.DataGridViewTextBoxColumn totalLuaMemory;
 
         private System.Windows.Forms.DataGridViewTextBoxColumn luaGC;
+        private System.Windows.Forms.DataGridViewTextBoxColumn monoGC;
         private System.Windows.Forms.DataGridViewTextBoxColumn averageTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalTime;
         private System.Windows.Forms.DataGridViewTextBoxColumn totalCalls;
