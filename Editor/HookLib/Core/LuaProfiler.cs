@@ -176,11 +176,16 @@ namespace SparrowLuaProfiler
             }
             sample.fahter = beginSampleMemoryStack.Count > 0 ? beginSampleMemoryStack.Peek() : null;
 
+            bool stackExhausted = beginSampleMemoryStack.Count == 0;
+            if(stackExhausted)
+            {
+                sample.Refix(); 
+            }
             // 该尽可能靠后，以统计更多的内部消耗
             sample.costTime = (int)(getcurrentTime - sample.currentTime);
             sample.internalCostTime += (int)(getcurrentTime - currentTime);
 
-            if (beginSampleMemoryStack.Count == 0)
+            if (stackExhausted)
             {
                 NetWorkClient.AddSample(sample);
             }

@@ -177,30 +177,27 @@ namespace SparrowLuaProfiler
                         try
                         {
                             int head = br.ReadInt32();
-                        
-                            while (head == PACK_HEAD)
+                            if (head == PACK_HEAD)
                             {
                                 int messageId = br.ReadInt32();
-                                Utl.Log(string.Format("recieved message {0}", messageId));
-                                if (messageId > Sample.ID_SEED) 
-                                {
-                                    Sample sample = null;
-                                    if (!m_samples.TryGetValue(messageId, out sample)) 
-                                    {
-                                        Utl.Log(string.Format("can't find sample id {0}", messageId));
-                                        continue;
-                                    }
-                                    SendMessage(sample);
-                                    continue;
-                                }
+                                Utl.Log(string.Format("msgid: {0}", messageId));
                                 switch (messageId)
                                 {
                                     case 0:
-                                        { 
-                                            
+                                        {
+
                                         }
                                         break;
                                     default:
+                                        Sample sample = null;
+                                        if (m_samples.TryGetValue(messageId, out sample))
+                                        {
+                                            SendMessage(sample);
+                                        }
+                                        else 
+                                        {
+                                            Utl.Log(string.Format("can't find sample:{0}", messageId));
+                                        }
                                         break;
                                 }
                             }
@@ -241,7 +238,6 @@ namespace SparrowLuaProfiler
                             bw.Write(PACK_HEAD);
                             if (s is Sample)
                             {
-                                (s as Sample).Refix();
                                 bw.Write((int)0);
                             }
                             else if (s is LuaRefInfo)

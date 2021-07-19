@@ -129,16 +129,23 @@ namespace SparrowLuaProfiler
             selectedSamples = frame.GetSamples().ToArray();
             if (selectedSamples == null) return;
             Array.Sort(selectedSamples, SortSample);
-            for (int i = 0;i< selectedSamples.Length;i++)
+            for (int i = 0; i < selectedSamples.Length; i++) 
             {
-                Sample item = selectedSamples[i];
+                Sample sample = selectedSamples[i];
                 TreeGridNode treeNode;
-                if (!nodeDict.TryGetValue(item.fullName, out treeNode))
+                if (!nodeDict.TryGetValue(sample.fullName, out treeNode))
                 {
                     treeNode = tvTaskList.Nodes.Add();
-                    nodeDict.Add(item.fullName, treeNode);
+                    nodeDict.Add(sample.fullName, treeNode);
                 }
-                DoFillChildFormInfo(item, treeNode);
+                DoFillChildFormInfo(sample, treeNode);
+                if (!sample.childrenFilled) 
+                {
+                    Console.WriteLine(string.Format("send cmd [{0}]{1} {2}", i, sample.seq, sample.name));
+                    sampleRequest.Add(sample);
+                    NetWorkServer.SendCmd((int)sample.seq);
+                }
+                
             }
             tvTaskList.Refresh();
         }
@@ -471,21 +478,24 @@ namespace SparrowLuaProfiler
                 {
                     Sample sample = queue.Dequeue();
 
-                    // 这是一份详细数据，所以原始数据中一定存在
+                    // 先在请求列表中查找
+                    for (int i = sampleRequest.Count - 1; i >= 0; i--)
+                    {
+                        if (sampleRequest[i].seq == sample.seq)
+                        {
+                            sampleRequest[i].childs = sample.childs;
+                            sample = sampleRequest[i];
+                            sample.childrenFilled = true;
+                            sampleRequest.RemoveAt(i);
+                        }
+                    }
                     if (sample.childrenFilled) 
                     {
-                        for (int i = sampleRequest.Count - 1; i >= 0; i--) 
-                        {
-                            if (sampleRequest[i].seq == sample.seq) 
-                            {
-                                sampleRequest[i].childs = sample.childs;
-                                sample = sampleRequest[i];
-                                sampleRequest.RemoveAt(i);
-                            }
-                        }
+                        Console.WriteLine(string.Format("recv {0} {1} child:{2}", sample.seq, sample.name, sample.childs.Count));
                         RefreshFormInfo(sample);
+                        continue;
                     }
-
+                 
                     Frame frame = null;
                     // 尝试加载最后一个帧
                     if (frames.Count > 0) 
@@ -564,25 +574,6 @@ namespace SparrowLuaProfiler
         private void GridView_RowEnter(object sender, DataGridViewCellEventArgs e) 
         {
             Console.WriteLine("Row Enter "+e.RowIndex);
-            if (selectedSamples == null || selectedFrameIndex < 0 || selectedFrameIndex > frames.Count) 
-            {
-                return;
-            }
-            Frame frame = frames[selectedFrameIndex];
-            MList<Sample> samples = frame.GetSamples();
-            if (e.RowIndex >= 0 && e.RowIndex < selectedSamples.Length)
-            {
-                Sample sample = selectedSamples[e.RowIndex];
-                if (sample.childrenFilled) return;
-                sampleRequest.Add(sample);
-                if (sample.seq > int.MaxValue)
-                {
-                    // hard code. temperory convert to int.
-                    Console.WriteLine("seq is to large,out of range.");
-                    return;
-                }
-                NetWorkServer.SendCmd((int)sample.seq);
-            }
         }
     }
 }

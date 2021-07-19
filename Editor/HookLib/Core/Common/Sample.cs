@@ -211,9 +211,19 @@ namespace SparrowLuaProfiler
             }
         }
 
-        public bool childrenFilled 
+        private bool m_childrenFilled = false;
+        public bool childrenFilled
         {
-            get { return childs.Count > 0; }
+            get { return m_childrenFilled; }
+            set
+            {
+                if (m_childrenFilled == value) return;
+                m_childrenFilled = value;
+                for (int i = 0; i < childs.Count; i++)
+                {
+                    childs[i].childrenFilled = value;
+                }
+            }
         }
 
         public long copySelfMonoGC = -1;
@@ -233,7 +243,7 @@ namespace SparrowLuaProfiler
                 return Math.Max(result, 0);
             }
         }
- 
+
         public bool CheckSampleValid()
         {
             bool result = false;
@@ -309,7 +319,7 @@ namespace SparrowLuaProfiler
                 {
                     bool needAdd = true;
                     var childList = value.childs;
-                    for (int i = 0,imax = childList.Count;i<imax;i++)
+                    for (int i = 0, imax = childList.Count; i < imax; i++)
                     {
                         var item = childList[i];
                         if ((object)(item.name) == (object)(name))
@@ -340,7 +350,7 @@ namespace SparrowLuaProfiler
         #region pool
         private static Dictionary<object, Dictionary<object, string>> m_fullNamePool = new Dictionary<object, Dictionary<object, string>>();
         private static ObjectPool<Sample> samplePool = new ObjectPool<Sample>(4096);
-        
+
         public static long ID_SEED = 100;
         private static long id_crease = ID_SEED;
         public static Sample Create()
@@ -409,12 +419,12 @@ namespace SparrowLuaProfiler
                 }
             }
         }
-        
+
         /// <summary>
         /// 浅拷贝，不拷贝children
         /// </summary>
         /// <returns></returns>
-        public Sample Clone() 
+        public Sample Clone()
         {
             Sample s = new Sample();
             s.seq = seq;
@@ -435,10 +445,10 @@ namespace SparrowLuaProfiler
         /// 排除hook对性能的干扰
         /// </summary>
         /// <returns></returns>
-        public int Refix() 
+        public int Refix()
         {
             int cost = internalCostTime;
-            for (int i = 0; i < childs.Count; i++) 
+            for (int i = 0; i < childs.Count; i++)
             {
                 Sample child = childs[i];
                 cost += child.Refix();
@@ -449,7 +459,7 @@ namespace SparrowLuaProfiler
 
         #endregion
 
-       
+
         public static void DeleteFiles(string str)
         {
             DirectoryInfo fatherFolder = new DirectoryInfo(str);
@@ -474,7 +484,7 @@ namespace SparrowLuaProfiler
             }
             Directory.Delete(str, true);
         }
-      
+
     }
 
 }
