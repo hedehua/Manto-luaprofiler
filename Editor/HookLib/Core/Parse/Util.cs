@@ -67,6 +67,20 @@ namespace SparrowLuaProfiler
                 File.Move(GetLogPath(), GetLogPath(DateTime.Now.ToString("yyyy.MM.dd-hh.mm.ss")));
             }
             Utl.Log("HookLib inject success.");
+            AppDomain domain = AppDomain.CurrentDomain;
+            domain.UnhandledException += UnhandledException;
+            System.Windows.Forms.Application.ThreadException += ThreadExceptionHandler;
+        }
+
+        private static void UnhandledException(object sender, UnhandledExceptionEventArgs e) 
+        {
+            Exception ex = (Exception)e.ExceptionObject;
+            Log(ex.Message + "\n" + ex.StackTrace);
+        }
+        private static void ThreadExceptionHandler(object sender, System.Threading.ThreadExceptionEventArgs e)
+        {
+            Exception ex = ex = e.Exception;
+            Log(ex.Message + "\n" + ex.StackTrace);
         }
 
         public static void Assert(bool condition)

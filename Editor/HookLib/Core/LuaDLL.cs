@@ -215,7 +215,7 @@ namespace SparrowLuaProfiler
         public delegate int lua_gettop_fun(IntPtr luaState);
         public static lua_gettop_fun lua_gettop { get; private set; }
 
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
         public delegate void lua_Hook_fun(IntPtr luaState, IntPtr ar);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
@@ -1008,7 +1008,7 @@ end
                 DoString(luaState, env_script);
             }
         }
-
+        private static lua_Hook_fun hook_func = null;
         public static IntPtr luaL_newstate_replace()
         {
             lock (m_Lock)
@@ -1019,7 +1019,8 @@ end
                 {
                     LuaProfiler.mainL = intPtr;
                     int LuaDebugMask = LUA_MASKCALL | LUA_MASKRET;
-                    lua_sethook(intPtr, LuaHook, LuaDebugMask, 0);
+                    hook_func = new lua_Hook_fun(LuaHook);
+                    lua_sethook(intPtr, hook_func, LuaDebugMask, 0);
                 }
                 return intPtr;
             }
@@ -1034,6 +1035,7 @@ end
                     if (LuaProfiler.mainL == luaState)
                     {
                         LuaProfiler.mainL = IntPtr.Zero;
+                        hook_func = null;
                     }
                 }
                 lua_close(luaState);

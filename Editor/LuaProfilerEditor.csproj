@@ -8,7 +8,7 @@
     <OutputType>WinExe</OutputType>
     <StartupObject>
     </StartupObject>
-    <RootNamespace>MikuLuaProfiler</RootNamespace>
+    <RootNamespace>SparrowLua</RootNamespace>
     <NoStandardLibraries>false</NoStandardLibraries>
     <AssemblyName>LuaProfiler</AssemblyName>
     <ApplicationIcon>App.ico</ApplicationIcon>

@@ -180,7 +180,7 @@ namespace SparrowLuaProfiler
                             if (head == PACK_HEAD)
                             {
                                 int messageId = br.ReadInt32();
-                                Utl.Log(string.Format("msgid: {0}", messageId));
+                                //Utl.Log(string.Format("msgid: {0}", messageId));
                                 switch (messageId)
                                 {
                                     case 0:
@@ -324,7 +324,6 @@ namespace SparrowLuaProfiler
                 LuaRefInfo r = (LuaRefInfo)o;
 
                 bw.Write(r.cmd);
-                bw.Write(Main.frameCount);
                 WriteString(bw, r.name);
                 WriteString(bw, r.addr);
                 bw.Write(r.type);

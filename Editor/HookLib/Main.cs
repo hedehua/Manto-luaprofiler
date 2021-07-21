@@ -75,7 +75,6 @@ namespace SparrowLuaProfiler
             , HookParameter parameter
             )
         {
-            frameCount = 0;
             try
             {
                 Utl.OnApplicationLaunch();
@@ -90,11 +89,6 @@ namespace SparrowLuaProfiler
             }
 
             NetWorkClient.ConnectServer("127.0.0.1", 2333);
-            while (true)
-            {
-                Thread.Sleep(100);
-                frameCount++;
-            }
 
         }
 
