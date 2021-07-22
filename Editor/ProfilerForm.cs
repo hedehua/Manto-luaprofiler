@@ -519,7 +519,7 @@ namespace SparrowLuaProfiler
             if (e.HitTestResult.ChartElementType == ChartElementType.DataPoint)
             {
                 DataPoint dp = e.HitTestResult.Series.Points[pointIndexOnMouseOver];
-                e.Text = string.Format("frame:{0}\nduration:{1:F3}ms", dp.XValue, dp.YValues[0]);
+                e.Text = string.Format("Frame: {0}\nDuration: {1:F3}ms", dp.XValue, dp.YValues[0]);
             }
         }
 

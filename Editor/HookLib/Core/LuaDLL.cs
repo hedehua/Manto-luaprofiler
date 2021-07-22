@@ -163,10 +163,8 @@ namespace SparrowLuaProfiler
         #endregion
 
         #region hooks
-        private static LocalHook luaL_newstate_hook;
+        private static LocalHook lua_newstate_hook;
         private static LocalHook lua_close_hook;
-        // don't hook loadbuffer
-        //private static LocalHook luaL_loadbuffer_hook;
         private static LocalHook load_dll_hook;
         #endregion
 
@@ -178,6 +176,13 @@ namespace SparrowLuaProfiler
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate IntPtr luaL_newstate_fun();
         public static luaL_newstate_fun luaL_newstate;
+
+        [UnmanagedFunctionPointer(CallingConvention.StdCall)]
+        public delegate IntPtr lua_Allocator_fun(IntPtr ud, IntPtr ptr, long osize, long nsize);
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate IntPtr lua_newstate_fun(lua_Allocator_fun f, IntPtr ud);
+        public static lua_newstate_fun lua_newstate;
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void lua_close_fun(IntPtr L);
@@ -561,10 +566,11 @@ end
 
         public static void Uninstall()
         {
-            if (luaL_newstate_hook != null)
+
+            if (lua_newstate_hook != null) 
             {
-                luaL_newstate_hook.Dispose();
-                luaL_newstate_hook = null;
+                lua_newstate_hook.Dispose();
+                lua_newstate_hook = null;
             }
 
             if (lua_close_hook != null)
@@ -573,12 +579,16 @@ end
                 lua_close_hook = null;
             }
 
-            // don't hook loadbuffer
-            //if (luaL_loadbuffer_hook != null)
-            //{
-            //    luaL_loadbuffer_hook.Dispose();
-            //    luaL_loadbuffer_hook = null;
-            //}
+        }
+
+        private static IntPtr LuaAllocator(IntPtr ud, IntPtr ptr, long osize,long nsize) 
+        {
+            if (lua_Allocator == null) 
+            {
+                Utl.Log("lua_Allocator is null.");
+                return IntPtr.Zero;
+            }
+            return lua_Allocator(ud, ptr, osize, nsize);
         }
 
         private static void LuaHook(IntPtr luaState, IntPtr ar) 
@@ -662,14 +672,16 @@ end
             {
                 return;
             }
-            if (luaL_newstate_hook == null)
-            {
-                IntPtr handle = GetProcAddress(moduleName, "luaL_newstate");
-                luaL_newstate = (luaL_newstate_fun)Marshal.GetDelegateForFunctionPointer(handle, typeof(luaL_newstate_fun));
 
-                luaL_newstate_fun luaFun = new luaL_newstate_fun(luaL_newstate_replace);
-                luaL_newstate_hook = LocalHook.Create(handle, luaFun, null);
-                InstallHook(luaL_newstate_hook);
+            if (lua_newstate_hook == null) 
+            {
+                IntPtr handle = GetProcAddress(moduleName, "lua_newstate");
+                lua_newstate = (lua_newstate_fun)Marshal.GetDelegateForFunctionPointer(handle, typeof(lua_newstate_fun));
+
+                lua_newstate_fun luaFun = new lua_newstate_fun(lua_newstate_replace);
+                lua_newstate_hook = LocalHook.Create(handle, luaFun, null);
+                InstallHook(lua_newstate_hook);
+                Utl.Log(string.Format("Install lua_newstate_hook {0}", handle));
             }
 
             if (lua_close_hook == null)
@@ -681,17 +693,6 @@ end
                 lua_close_hook = LocalHook.Create(handle, luaFun, null);
                 InstallHook(lua_close_hook);
             }
-            // don't hook loadbufferx
-            //if (luaL_loadbuffer_hook == null)
-            //{
-            //    IntPtr handle = GetProcAddress(moduleName, "luaL_loadbufferx");
-            //    luaL_loadbufferx = (luaL_loadbufferx_fun)Marshal.GetDelegateForFunctionPointer(handle, typeof(luaL_loadbufferx_fun));
-
-            //    luaL_loadbufferx_fun luaFun = new luaL_loadbufferx_fun(luaL_loadbuffer_replace);
-            //    luaL_loadbuffer_hook = LocalHook.Create(handle, luaFun, null);
-            //    InstallHook(luaL_loadbuffer_hook);
-            //    MessageBox.Show("bind load buff success");
-            //}
 
             if (LUA_VERSION >= 530)
             {
@@ -1009,12 +1010,18 @@ end
             }
         }
         private static lua_Hook_fun hook_func = null;
-        public static IntPtr luaL_newstate_replace()
+        private static lua_Allocator_fun lua_Allocator = null;
+        private static lua_Allocator_fun lua_Allocator_replace = null;
+
+        public static IntPtr lua_newstate_replace(lua_Allocator_fun f, IntPtr ud) 
         {
             lock (m_Lock)
             {
-                IntPtr intPtr = luaL_newstate();
-                Utl.Log(string.Format("luaL_newstate[{0}],hook:{1}", intPtr, isHook));
+                lua_Allocator = f;
+                lua_Allocator_replace = new lua_Allocator_fun(LuaAllocator);
+                GC.KeepAlive(f);
+                IntPtr intPtr = lua_newstate(lua_Allocator_replace, ud);
+                Utl.Log(string.Format("lua_newstate[{0}],hook:{1}", intPtr, isHook));
                 if (isHook)
                 {
                     LuaProfiler.mainL = intPtr;
@@ -1030,15 +1037,19 @@ end
         {
             lock (m_Lock)
             {
+                Utl.Log(string.Format("lua_close[{0}],hook:{1}", luaState, isHook));
                 if (isHook)
                 {
                     if (LuaProfiler.mainL == luaState)
                     {
+                        lua_sethook(luaState, null, 0, 0);
                         LuaProfiler.mainL = IntPtr.Zero;
-                        hook_func = null;
                     }
                 }
                 lua_close(luaState);
+                hook_func = null;
+                lua_Allocator = null;
+                lua_Allocator_replace = null;
             }
         }
 
