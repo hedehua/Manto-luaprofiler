@@ -256,7 +256,6 @@ namespace SparrowLuaProfiler
                     Thread.Sleep(10);
                 }
 #pragma warning disable 0168
-                catch (ThreadAbortException e) { }
                 catch (Exception e)
                 {
                     Utl.Log(e.ToString());
