@@ -114,7 +114,7 @@ namespace SparrowLuaProfiler
 #else
     public delegate int LuaCSFunction(IntPtr luaState);
 #endif
-#endregion
+    #endregion
 
     public class LuaDLL
     {
@@ -226,6 +226,10 @@ namespace SparrowLuaProfiler
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int lua_sethook_fun(IntPtr luaState, lua_Hook_fun fun, int mask, int count);
         public static lua_sethook_fun lua_sethook { get; private set; }
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate lua_Hook_fun lua_gethook_func(IntPtr luaState);
+        public static lua_gethook_func lua_gethook{ get; private set; }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int lua_getinfo_fun(IntPtr luaState,string what, IntPtr ar);
@@ -733,6 +737,14 @@ end
                 }
             }
 
+            {
+                IntPtr handle = GetProcAddress(moduleName, "lua_gethook");
+                if (handle != IntPtr.Zero) 
+                {
+                    lua_gethook = (lua_gethook_func)Marshal.GetDelegateForFunctionPointer(handle, typeof(lua_gethook_func));
+                }
+            }
+
             { 
                 IntPtr handle = GetProcAddress(moduleName, "lua_getinfo");
                 if (handle != IntPtr.Zero)
@@ -998,6 +1010,10 @@ end
             }
             return result;
         }
+        public static bool CheckHook(IntPtr luaState) 
+        {
+            return lua_gethook(luaState) == hook_func;
+        }
         
 
         public static void luaL_initlibs(IntPtr luaState)
@@ -1037,7 +1053,7 @@ end
         {
             lock (m_Lock)
             {
-                Utl.Log(string.Format("lua_close[{0}],hook:{1}", luaState, isHook));
+                Utl.Log(string.Format("lua_close[{0}],hook:{1}", luaState, CheckHook(luaState)));
                 if (isHook)
                 {
                     if (LuaProfiler.mainL == luaState)
