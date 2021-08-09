@@ -453,29 +453,29 @@ end
         public static void DoString(IntPtr L, string script)
         {
             byte[] chunk = Encoding.UTF8.GetBytes(script);
-            int oldTop = LuaDLL.lua_gettop(L);
-            LuaDLL.lua_getglobal(L, "miku_handle_error");
-            if (LuaDLL.luaL_loadbufferUnHook(L, chunk, (IntPtr)chunk.Length, "chunk") == 0)
+            int oldTop = lua_gettop(L);
+            lua_getglobal(L, "miku_handle_error");
+            if (luaL_loadbufferUnHook(L, chunk, (IntPtr)chunk.Length, "chunk") == 0)
             {
-                if (LuaDLL.lua_pcall(L, 0, -1, oldTop + 1) == 0)
+                if (lua_pcall(L, 0, -1, oldTop + 1) == 0)
                 {
-                    LuaDLL.lua_remove(L, oldTop + 1);
+                    lua_remove(L, oldTop + 1);
                 }
             }
             else
             {
-                MessageBox.Show("error:" + script);
+                Utl.Log("error:" + script);
             }
-            LuaDLL.lua_settop(L, oldTop);
+            lua_settop(L, oldTop);
         }
 
         public static long GetLuaMemory(IntPtr luaState)
         {
             long result = 0;
-            if (LuaProfiler.m_hasL)
+            if (luaState != IntPtr.Zero)
             {
-                result = LuaDLL.lua_gc(luaState, LuaGCOptions.LUA_GCCOUNT, 0);
-                result = result * 1024 + LuaDLL.lua_gc(luaState, LuaGCOptions.LUA_GCCOUNTB, 0);
+                result = lua_gc(luaState, LuaGCOptions.LUA_GCCOUNT, 0);
+                result = result * 1024 + lua_gc(luaState, LuaGCOptions.LUA_GCCOUNTB, 0);
             }
             return result;
         }
@@ -595,40 +595,6 @@ end
             return lua_Allocator(ud, ptr, osize, nsize);
         }
 
-        private static void LuaHook(IntPtr luaState, IntPtr ar) 
-        {
-            try
-            {
-                long currentTime = LuaProfiler.getcurrentTime;
-
-                int ret = lua_getinfo(luaState, "nS", ar);
-                if (ret == 0) 
-                {
-                    Utl.Log("lua_getinfo:" + ret);
-                    return;
-                }
-              
-                lua_Debug debug = (lua_Debug)Marshal.PtrToStructure(ar, typeof(lua_Debug));
-                switch (debug.evt)
-                {
-                    case LUA_HOOKCALL:
-                        string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
-                        LuaProfiler.BeginSample(luaState, message, currentTime);
-                        break;
-                    case LUA_HOOKRET:
-                        LuaProfiler.EndSample(luaState, currentTime);
-                        break;
-                    default: break;
-                }
-              
-            }
-            catch (Exception e)
-            {
-                Utl.Log(e.ToString());
-            }
-            
-        }
-
         public static void BindEasyHook()
         {
             if (m_hooked) return;
@@ -696,6 +662,7 @@ end
                 lua_close_fun luaFun = new lua_close_fun(lua_close_replace);
                 lua_close_hook = LocalHook.Create(handle, luaFun, null);
                 InstallHook(lua_close_hook);
+                Utl.Log(string.Format("Install lua_close_hook {0}", handle));
             }
 
             if (LUA_VERSION >= 530)
@@ -1010,11 +977,7 @@ end
             }
             return result;
         }
-        public static bool CheckHook(IntPtr luaState) 
-        {
-            return lua_gethook(luaState) == hook_func;
-        }
-        
+      
 
         public static void luaL_initlibs(IntPtr luaState)
         {
@@ -1025,7 +988,7 @@ end
                 DoString(luaState, env_script);
             }
         }
-        private static lua_Hook_fun hook_func = null;
+
         private static lua_Allocator_fun lua_Allocator = null;
         private static lua_Allocator_fun lua_Allocator_replace = null;
 
@@ -1037,14 +1000,8 @@ end
                 lua_Allocator_replace = new lua_Allocator_fun(LuaAllocator);
                 GC.KeepAlive(f);
                 IntPtr intPtr = lua_newstate(lua_Allocator_replace, ud);
-                Utl.Log(string.Format("lua_newstate[{0}],hook:{1}", intPtr, isHook));
-                if (isHook)
-                {
-                    LuaProfiler.mainL = intPtr;
-                    int LuaDebugMask = LUA_MASKCALL | LUA_MASKRET;
-                    hook_func = new lua_Hook_fun(LuaHook);
-                    lua_sethook(intPtr, hook_func, LuaDebugMask, 0);
-                }
+                LuaProfiler.OnLuaStateCreated(intPtr);
+                Utl.Log(string.Format("lua_newstate[{0}]", intPtr));
                 return intPtr;
             }
         }
@@ -1053,17 +1010,11 @@ end
         {
             lock (m_Lock)
             {
-                Utl.Log(string.Format("lua_close[{0}],hook:{1}", luaState, CheckHook(luaState)));
-                if (isHook)
-                {
-                    if (LuaProfiler.mainL == luaState)
-                    {
-                        lua_sethook(luaState, null, 0, 0);
-                        LuaProfiler.mainL = IntPtr.Zero;
-                    }
-                }
+                Utl.Log(string.Format("lua_close[{0}]", luaState));
+ 
+                LuaProfiler.OnLuaStateClosed(luaState);
+
                 lua_close(luaState);
-                hook_func = null;
                 lua_Allocator = null;
                 lua_Allocator_replace = null;
             }

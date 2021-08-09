@@ -34,6 +34,7 @@ namespace SparrowLuaProfiler
 
         protected override void OnClosed(EventArgs e)
         {
+            // TODO: disconnect
             Thread.Sleep(100);
             base.OnClosed(e);
             System.Environment.Exit(0);
@@ -79,7 +80,7 @@ namespace SparrowLuaProfiler
         }
 
         #region refresh
-        Queue<Sample> queue = new Queue<Sample>(32);
+        Queue<NetBase> queue = new Queue<NetBase>(32);
         Dictionary<string, TreeGridNode> nodeDict = new Dictionary<string, TreeGridNode>();
         List<Frame> frames = new List<Frame>();
         Dictionary<string, Series> timelineDic = new Dictionary<string, Series>();
@@ -89,13 +90,30 @@ namespace SparrowLuaProfiler
         private int selectedFrameIndex =-1;
         private int lastPaintIndex = 0;
         Sample[] selectedSamples;
-        private void OnReceiveSample(Sample sample)
+        private void OnReceiveSample(NetBase netBase)
         {
             lock (queue)
             {
-                queue.Enqueue(sample);
+                queue.Enqueue(netBase);
             }
-            // Console.WriteLine("receive sample :"+ sample.name);
+        }
+        private void OnSysInfoChange(SysInfo info) 
+        {
+
+            if (!info.running) 
+            {
+                playBtn.Enabled = false;
+                pauseBtn.Enabled = false;
+                return;
+            }
+            if (info.hooked)
+            {
+                playBtn.Enabled = false;
+                pauseBtn.Enabled = true;
+                return;
+            }
+            playBtn.Enabled = true;
+            pauseBtn.Enabled = false;
         }
         private void OnClientConnected() 
         {
@@ -327,7 +345,7 @@ namespace SparrowLuaProfiler
 
         private void deattachBtn_Click(object sender, EventArgs e)
         {
-            Thread.Sleep(1000);
+            Thread.Sleep(100);
             NetWorkServer.CloseClient();
             Thread.Sleep(100);
             NativeAPI.GacUninstallAssemblies
@@ -342,7 +360,20 @@ namespace SparrowLuaProfiler
             MessageBox.Show("已解除");
             injectButton.Enabled = true;
             deattachBtn.Enabled = false;
-
+            playBtn.Enabled = false;
+            pauseBtn.Enabled = false;
+        }
+        private void playBtn_Click(object sender, EventArgs e) 
+        {
+            NetWorkServer.SendCmd(1);
+        }
+        private void pauseBtn_Click(object sender, EventArgs e) 
+        {
+            NetWorkServer.SendCmd(2);
+        }
+        private void captureBtn_Click(object sender, EventArgs e) 
+        {
+            
         }
 
         private void button1_Click(object sender, EventArgs e)
@@ -474,10 +505,20 @@ namespace SparrowLuaProfiler
 
             lock (queue)
             {
-                while (queue.Count > 0)
+                
+            }
+            while (true)
+            {
+                NetBase netbase = null;
+                lock (queue) 
                 {
-                    Sample sample = queue.Dequeue();
-
+                    if (queue.Count == 0) break;
+                    if (queue.Count > 0) netbase = queue.Dequeue();
+                }
+                
+                if (netbase is Sample)
+                {
+                    Sample sample = netbase as Sample;
                     // 先在请求列表中查找
                     for (int i = sampleRequest.Count - 1; i >= 0; i--)
                     {
@@ -489,16 +530,16 @@ namespace SparrowLuaProfiler
                             sampleRequest.RemoveAt(i);
                         }
                     }
-                    if (sample.childrenFilled) 
+                    if (sample.childrenFilled)
                     {
                         Console.WriteLine(string.Format("recv {0} {1} child:{2}", sample.seq, sample.name, sample.childs.Count));
                         RefreshFormInfo(sample);
                         continue;
                     }
-                 
+
                     Frame frame = null;
                     // 尝试加载最后一个帧
-                    if (frames.Count > 0) 
+                    if (frames.Count > 0)
                     {
                         frame = frames[frames.Count - 1];
                         if (frame.AddSample(sample)) continue;
@@ -507,10 +548,14 @@ namespace SparrowLuaProfiler
                     frame = new Frame();
                     frames.Add(frame);
                     frame.AddSample(sample);
-
                 }
-                FillTimeline();
+                if (netbase is SysInfo)
+                {
+                    SysInfo sysInfo = netbase as SysInfo;
+                    OnSysInfoChange(sysInfo);
+                }
             }
+            FillTimeline();
         }
         private int pointIndexOnMouseOver = 0;
         private void Chart1_GetToolTipText(object sender, ToolTipEventArgs e)

@@ -38,6 +38,7 @@ __________#_______####_______####______________
 
 using System;
 using System.IO;
+using System.Threading;
 
 namespace SparrowLuaProfiler
 {
@@ -56,9 +57,14 @@ namespace SparrowLuaProfiler
             return string.Format("{0}/luaprofiler{1}.log", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), timestamp);
         }
 
+        private static object m_lock = new object();
         public static void Log(string message)
         {
-            File.AppendAllText(GetLogPath(), string.Format("{0} {1}\n", DateTime.Now.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff"), message));
+            lock (m_lock) 
+            {
+                File.AppendAllText(GetLogPath(), string.Format("[{0}]{1} {2}\n", Thread.CurrentThread.ManagedThreadId, DateTime.Now.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss.fff"), message));
+            }
+            
         }
         public static void OnApplicationLaunch()
         {

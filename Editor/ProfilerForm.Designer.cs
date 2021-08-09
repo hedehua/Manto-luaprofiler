@@ -40,6 +40,9 @@ namespace SparrowLuaProfiler
             this.label1 = new System.Windows.Forms.Label();
             this.processCom = new System.Windows.Forms.ComboBox();
             this.deattachBtn = new System.Windows.Forms.Button();
+            this.playBtn = new System.Windows.Forms.Button();
+            this.pauseBtn = new System.Windows.Forms.Button();
+            this.captureBtn = new System.Windows.Forms.Button();
             this.searchBox = new System.Windows.Forms.TextBox();
             this.searchBtn = new System.Windows.Forms.Button();
             this.button1 = new System.Windows.Forms.Button();
@@ -181,6 +184,43 @@ namespace SparrowLuaProfiler
             this.deattachBtn.Text = "解除";
             this.deattachBtn.UseVisualStyleBackColor = true;
             this.deattachBtn.Click += new System.EventHandler(this.deattachBtn_Click);
+
+            ///
+            // playBtn
+            ///
+            this.playBtn.Enabled = false;
+            this.playBtn.Location = new System.Drawing.Point(389, 3);
+            this.playBtn.Name = "playBtn";
+            this.playBtn.Size = new System.Drawing.Size(84, 23);
+            this.playBtn.TabIndex = 5;
+            this.playBtn.Text = "开始";
+            this.playBtn.UseVisualStyleBackColor = true;
+            this.playBtn.Click += new System.EventHandler(this.playBtn_Click);
+
+            ///
+            // pauseBtn
+            ///
+            this.pauseBtn.Enabled = false;
+            this.pauseBtn.Location = new System.Drawing.Point(489, 3);
+            this.pauseBtn.Name = "playBtn";
+            this.pauseBtn.Size = new System.Drawing.Size(84, 23);
+            this.pauseBtn.TabIndex = 5;
+            this.pauseBtn.Text = "暂停";
+            this.pauseBtn.UseVisualStyleBackColor = true;
+            this.pauseBtn.Click += new System.EventHandler(this.pauseBtn_Click);
+
+            ///
+            // captureBt
+            ///
+            this.captureBtn.Enabled = true;
+            this.captureBtn.Location = new System.Drawing.Point(975, 3);
+            this.captureBtn.Name = "captureBtn";
+            this.captureBtn.Size = new System.Drawing.Size(84, 23);
+            this.captureBtn.TabIndex = 5;
+            this.captureBtn.Text = "内存快照";
+            this.captureBtn.UseVisualStyleBackColor = true;
+            this.captureBtn.Click += new System.EventHandler(this.captureBtn_Click);
+
             // 
             // searchBox
             // 
@@ -282,6 +322,9 @@ namespace SparrowLuaProfiler
             this.Controls.Add(this.processCom);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.injectButton);
+            this.Controls.Add(this.playBtn);
+            this.Controls.Add(this.pauseBtn);
+            this.Controls.Add(this.captureBtn);
             this.Controls.Add(this.chart1);
             this.Controls.Add(this.tvTaskList);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -303,6 +346,9 @@ namespace SparrowLuaProfiler
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.ComboBox processCom;
         private System.Windows.Forms.Button deattachBtn;
+        private System.Windows.Forms.Button playBtn;
+        private System.Windows.Forms.Button pauseBtn;
+        private System.Windows.Forms.Button captureBtn;
         private System.Windows.Forms.TextBox searchBox;
         private System.Windows.Forms.Button searchBtn;
         private System.Windows.Forms.Button button1;

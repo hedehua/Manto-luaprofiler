@@ -89,6 +89,7 @@ namespace SparrowLuaProfiler
             }
 
             NetWorkClient.ConnectServer("127.0.0.1", 2333);
+            LuaProfiler.SendSysInfo();
 
         }
 

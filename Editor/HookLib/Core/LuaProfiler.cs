@@ -35,72 +35,136 @@ __________#_______####_______####______________
 
 using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
+
 namespace SparrowLuaProfiler
 {
     public static class LuaProfiler
     {
         #region member
-        private static IntPtr _mainL = IntPtr.Zero;
+
         private static readonly Stack<Sample> beginSampleMemoryStack = new Stack<Sample>();
-        public static int mainThreadId = -100;
+        public static int m_mainThreadId = -100;
         const long MaxB = 1024;
         const long MaxK = MaxB * 1024;
         const long MaxM = MaxK * 1024;
         const long MaxG = MaxM * 1024;
 
-        private static Action<Sample> m_onReceiveSample;
-        private static Action<LuaRefInfo> m_onReceiveRef;
-        private static Action<LuaDiffInfo> m_onReceiveDiff;
-        public static void RegisterOnReceiveSample(Action<Sample> onReceive)
-        {
-            m_onReceiveSample = onReceive;
-        }
-        public static void RegisterOnReceiveRefInfo(Action<LuaRefInfo> onReceive)
-        {
-            m_onReceiveRef = onReceive;
-        }
-        public static void RegisterOnReceiveDiffInfo(Action<LuaDiffInfo> onReceive)
-        {
-            m_onReceiveDiff = onReceive;
-        }
-
-        public static void UnRegistReceive()
-        {
-            m_onReceiveSample = null;
-            m_onReceiveRef = null;
-            m_onReceiveDiff = null;
-        }
         #endregion
 
         #region property
-        public static bool m_hasL = false;
-        public static IntPtr mainL
+        private static IntPtr m_mainL = IntPtr.Zero;
+
+        public static void OnLuaStateCreated(IntPtr luastate) 
+        {
+            if (luastate != IntPtr.Zero)
+            {
+                m_mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
+            }
+            m_mainL = luastate;
+            NetWorkClient.RegisterOnReceiveCmd(OnReceiveCmd);
+            SendSysInfo();
+        }
+
+        private static void OnReceiveCmd(int cmd) 
+        {
+            if (cmd == 1) 
+            {
+                SetHook(m_mainL, true);
+            }
+            if (cmd == 2) 
+            {
+                SetHook(m_mainL, false);
+            }
+            SendSysInfo();
+        }
+        public static void OnLuaStateClosed(IntPtr luaState) 
+        {
+            if (luaState != m_mainL) 
+            {
+                Utl.Log("luastate Closed ,but it's not main state");
+                return;
+            }
+            hook_func = null;
+            m_mainL = IntPtr.Zero;
+            m_mainThreadId = 0;
+            NetWorkClient.UnRegistReceive();
+            SendSysInfo();
+        }
+        public static void SendSysInfo() 
+        {
+            Utl.Log(string.Format("send sysinfo: luastate:{0} {1}", IsMainLCreated, CheckHook()));
+            NetWorkClient.SendMessage(new SysInfo(IsMainLCreated, CheckHook()));
+        }
+
+        private static LuaDLL.lua_Hook_fun hook_func = null;
+        public static bool CheckHook() 
+        {
+            if (m_mainL == IntPtr.Zero) return false;
+            if (hook_func == null) return false;
+            return LuaDLL.lua_gethook(m_mainL) == hook_func;
+        }
+        public static void SetHook(IntPtr luaState, bool enable)
+        {
+            if (enable)
+            {
+                hook_func = new LuaDLL.lua_Hook_fun(LuaHook);
+                int LuaDebugMask = LuaDLL.LUA_MASKCALL | LuaDLL.LUA_MASKRET;
+                LuaDLL.lua_sethook(luaState, hook_func, LuaDebugMask, 0);
+            }
+            else
+            {
+                hook_func = null;
+                LuaDLL.lua_sethook(luaState, null, 0, 0);
+                beginSampleMemoryStack.Clear();
+            }
+        }
+        private static void LuaHook(IntPtr luaState, IntPtr ar)
+        {
+            try
+            {
+                long currentTime = LuaProfiler.getcurrentTime;
+
+                int ret = LuaDLL.lua_getinfo(luaState, "nS", ar);
+                if (ret == 0)
+                {
+                    Utl.Log("lua_getinfo:" + ret);
+                    return;
+                }
+
+                lua_Debug debug = (lua_Debug)Marshal.PtrToStructure(ar, typeof(lua_Debug));
+                switch (debug.evt)
+                {
+                    case LuaDLL.LUA_HOOKCALL:
+                        string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
+                        BeginSample(luaState, message, currentTime);
+                        break;
+                    case LuaDLL.LUA_HOOKRET:
+                        EndSample(luaState, currentTime);
+                        break;
+                    default: break;
+                }
+
+            }
+            catch (Exception e)
+            {
+                Utl.Log(e.ToString());
+            }
+
+        }
+
+        public static bool IsMainLCreated
         {
             get
             {
-                return _mainL;
-            }
-            set
-            {
-                if (value != IntPtr.Zero)
-                {
-                    m_hasL = true;
-                    // unlua has call this function.,so we don't need to do this.
-                    //LuaDLL.luaL_initlibs(value);
-                    mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
-                }
-                else
-                {
-                    m_hasL = false;
-                }
-                _mainL = value;
+                return m_mainL != IntPtr.Zero;
             }
         }
         public static bool IsMainThread
         {
             get
             {
-                return System.Threading.Thread.CurrentThread.ManagedThreadId == mainThreadId;
+                return System.Threading.Thread.CurrentThread.ManagedThreadId == m_mainThreadId;
             }
         }
         #endregion
@@ -114,6 +178,7 @@ namespace SparrowLuaProfiler
                 return System.Diagnostics.Stopwatch.GetTimestamp();
             }
         }
+       
         public static void BeginSample(IntPtr luaState, string name, long currentTime) 
         {
             if (!IsMainThread)
@@ -192,7 +257,7 @@ namespace SparrowLuaProfiler
             //释放掉被累加的Sample
             if (beginSampleMemoryStack.Count != 0 && sample.fahter == null)
             {
-                Utl.Log(string.Format("sample[%s] restore.", sample.name));
+                Utl.Log(string.Format("sample[{0}] restore.", sample.name));
                 sample.Restore();
             }
         }

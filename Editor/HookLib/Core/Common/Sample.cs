@@ -44,6 +44,17 @@ namespace SparrowLuaProfiler
     {
         public abstract void Restore();
     }
+    public class SysInfo : NetBase
+    {
+        public bool running; // 0 state closed, 1 state created
+        public bool hooked;
+        public override void Restore() { }
+        public SysInfo(bool c, bool h)
+        {
+            hooked = h;
+            running = c;
+        }
+    }
 
     public class LuaRefInfo : NetBase
     {

@@ -54,12 +54,29 @@ namespace SparrowLuaProfiler
         public static MBinaryWriter bw;
         private static BinaryReader br;
 
+
+        /// <summary>
+        /// 1 hook, 2 don't hook
+        /// </summary>
+        private static Action<int> m_onReceiveCmd;
+
+        public static void RegisterOnReceiveCmd(Action<int> onReceive)
+        {
+            m_onReceiveCmd = onReceive;
+        }
+
+        public static void UnRegistReceive()
+        {
+            m_onReceiveCmd = null;
+        }
+
         #region public
         public static void ConnectServer(string host, int port)
         {
             Utl.Log(string.Format("connect to {0}:{1}", host, port));
             if (m_client != null)
             {
+                Utl.Log("previous connection is still exist, will be closed soon. " + m_client.Connected);
                 Close();
             }
             m_client = new TcpClient();
@@ -68,7 +85,7 @@ namespace SparrowLuaProfiler
             try
             {
                 m_client.Connect(host, port);
-                m_client.Client.SendTimeout = 30000;
+                m_client.Client.SendTimeout = 1000;
                 //m_sampleDict.Clear();
                 m_strDict.Clear();
                 m_key = 0;
@@ -85,14 +102,13 @@ namespace SparrowLuaProfiler
 
             catch (Exception e)
             {
-                Utl.Log(e.Message);
+                Utl.Log("connect to server error: " + e.Message);
                 Close();
             }
         }
 
         public static void Close()
         {
-            Utl.Log("socket closed.");
             try
             {
                 if (m_client != null)
@@ -102,30 +118,32 @@ namespace SparrowLuaProfiler
                         m_client.Close();
                     }
                     m_client = null;
+                    Utl.Log("socket closed.");
                 }
                 m_sampleQueue.Clear();
+
+                if (m_sendThread != null)
+                {
+                    var tmp = m_sendThread;
+                    m_sendThread = null;
+                    tmp.Abort();
+                }
+                if (m_receiveThread != null)
+                {
+                    var tmp = m_receiveThread;
+                    m_receiveThread = null;
+                    tmp.Abort();
+                }
             }
-            catch (Exception e)
+            catch (Exception e) 
             {
-                Utl.Log(e.Message);
+                Utl.Log("abort thread: " + e.Message);
             }
             finally
             {
                 m_strDict.Clear();
             }
 
-            if (m_sendThread != null)
-            {
-                var tmp = m_sendThread;
-                m_sendThread = null;
-                tmp.Abort();
-            }
-            if (m_receiveThread != null) 
-            {
-                var tmp = m_receiveThread;
-                m_receiveThread = null;
-                tmp.Abort();
-            }
         }
 
         //private static Dictionary<string, Sample> m_sampleDict = new Dictionary<string, Sample>(256);
@@ -162,13 +180,9 @@ namespace SparrowLuaProfiler
             {
                 try
                 {
-                    if (m_receiveThread == null)
-                    {
-                        return;
-                    }
+
                     if (m_client == null)
                     {
-                        Close();
                         return;
                     }
 
@@ -180,12 +194,22 @@ namespace SparrowLuaProfiler
                             if (head == PACK_HEAD)
                             {
                                 int messageId = br.ReadInt32();
-                                //Utl.Log(string.Format("msgid: {0}", messageId));
+                                Utl.Log(string.Format("receive message id:{0}", messageId));
                                 switch (messageId)
                                 {
                                     case 0:
                                         {
-
+                                            // hand shake 
+                                        }
+                                        break;
+                                    case 1:
+                                    case 2:
+                                        {
+                                            Utl.Log("queue count:" + m_sampleQueue.Count);
+                                            if (m_onReceiveCmd != null)
+                                            {
+                                                m_onReceiveCmd(messageId);
+                                            }
                                         }
                                         break;
                                     default:
@@ -220,46 +244,55 @@ namespace SparrowLuaProfiler
             {
                 try
                 {
-                    if (m_sendThread == null)
+                    if (m_client == null)
                     {
                         return;
                     }
-                    
-                    if (m_sampleQueue.Count > 0)
+
+                    while (true)
                     {
-                        while (m_sampleQueue.Count > 0)
+
+                        NetBase s = null;
+                        lock (m_sampleQueue)
                         {
-                            
-                            NetBase s = null;
-                            lock (m_sampleQueue)
+                            if (m_sampleQueue.Count == 0) break;
+                            else if (m_sampleQueue.Count > 0)
                             {
                                 s = m_sampleQueue.Dequeue();
                             }
-                            bw.Write(PACK_HEAD);
-                            if (s is Sample)
-                            {
-                                bw.Write((int)0);
-                            }
-                            else if (s is LuaRefInfo)
-                            {
-                                bw.Write((int)1);
-                            }
-                            else if (s is LuaDiffInfo)
-                            {
-                                bw.Write((int)2);
-                            }
-                            Serialize(s, bw);
-                            s.Restore();
-                            
                         }
+                        bw.Write(PACK_HEAD);
+                        if (s is SysInfo)
+                        {
+                            bw.Write((int)0);
+                        }
+                        if (s is Sample)
+                        {
+                            bw.Write((int)1);
+                        }
+                        else if (s is LuaRefInfo)
+                        {
+                            bw.Write((int)2);
+                        }
+                        else if (s is LuaDiffInfo)
+                        {
+                            bw.Write((int)3);
+                        }
+
+                        Serialize(s, bw);
+                        s.Restore();
+
                     }
                     Thread.Sleep(10);
                 }
 #pragma warning disable 0168
+                catch (IOException e) 
+                {
+                    Close();
+                }
                 catch (Exception e)
                 {
-                    Utl.Log(e.ToString());
-                    Close();
+                    Utl.Log("send msg erro:" + e.ToString());
                 }
 #pragma warning restore 0168
             }
@@ -306,9 +339,6 @@ namespace SparrowLuaProfiler
                 WriteString(bw, s.name);
 
                 bw.Write(s.costTime);
-   
-                //bw.Write(s.currentLuaMemory);
-                //bw.Write(s.currentMonoMemory);
 
                 bw.Write((ushort)s.childs.Count);
 
@@ -317,6 +347,12 @@ namespace SparrowLuaProfiler
                 {
                     Serialize(childs0[i0], bw);
                 }
+            }
+            else if (o is SysInfo) 
+            {
+                SysInfo s = (SysInfo)o;
+                bw.Write(s.running ? (byte)1 : (byte)0);
+                bw.Write(s.hooked ? (byte)1 : (byte)0);
             }
             else if (o is LuaRefInfo)
             {

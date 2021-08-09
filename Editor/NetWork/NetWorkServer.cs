@@ -55,7 +55,7 @@ namespace SparrowLuaProfiler
         private static BinaryWriter bw;
 
         private const int PACK_HEAD = 0x23333333;
-        private static Action<Sample> m_onReceiveSample;
+        private static Action<NetBase> m_onReceiveSample;
         private static Action m_onClientConnected;
         private static Action m_onClientDisconnected;
         private static Queue<int> m_cmdQueue = new Queue<int>(32);
@@ -65,7 +65,7 @@ namespace SparrowLuaProfiler
             return tcpClient != null;
         }
 
-        public static void RegisterOnReceiveSample(Action<Sample> onReceive)
+        public static void RegisterOnReceiveSample(Action<NetBase> onReceive)
         {
             m_onReceiveSample = onReceive;
         }
@@ -100,7 +100,6 @@ namespace SparrowLuaProfiler
         private static void AcceptThread()
         {
             Console.WriteLine("<color=#00ff00>begin listerner</color>");
-            tcpClient = null;
 
             while (true)
             {
@@ -152,10 +151,10 @@ namespace SparrowLuaProfiler
         /// </summary>
         /// <param name="cmd"></param>
         // 0 handshake,
-        // 1 获取ref表
-        // 2 记录下当前全局表状态
-        // 3 diff 当前状态与历史记录
-        // 4 执行完lua的gc在diff
+        // 1 开启hook
+        // 2 关闭hook
+        // 3 断开连接
+
         // 100+ sample detail
         public static void SendCmd(int cmd)
         {
@@ -177,33 +176,44 @@ namespace SparrowLuaProfiler
                 {
                     if (tcpClient == null)
                     {
-                        Close();
                         return;
                     }
 
-                    if (ns.CanRead && ns.DataAvailable)
+                    while (ns.CanRead && ns.DataAvailable)
                     {
                         try
                         {
                             int head = br.ReadInt32();
-                            //处理粘包
-                            while (head == PACK_HEAD)
+                            if (head == PACK_HEAD)
                             {
                                 int messageId = br.ReadInt32();
                                 switch (messageId)
                                 {
-                                    case 0:
+                                    case 0: // sys info
                                         {
-                                            Sample s = Deserialize(br);
-                                            if (m_onReceiveSample != null)
+                                            SysInfo s = DeserializeSysInfo(br);
+                                            if (m_onReceiveSample != null) 
                                             {
                                                 m_onReceiveSample(s);
                                             }
                                         }
                                         break;
-                                    case 1:
+                                    case 1:  // sample 
+                                        {
+                                            long t1 = System.Diagnostics.Stopwatch.GetTimestamp(); 
+                                            Sample s = Deserialize(br);
+                                            long t2 = System.Diagnostics.Stopwatch.GetTimestamp();
+                                            if (m_onReceiveSample != null)
+                                            {
+                                                m_onReceiveSample(s);
+                                            }
+                                            long t3 = System.Diagnostics.Stopwatch.GetTimestamp();
+                                            Console.WriteLine(string.Format("{0} {1}", t3 - t2, t2 - t1));
+                                        }
+                                        break;
+                                    case 2: // ref info
                                             break;
-                                    case 2:
+                                    case 3: // diff info
                                         break;
                                 }
 
@@ -227,7 +237,7 @@ namespace SparrowLuaProfiler
                     Close();
                 }
 #pragma warning restore 0168
-                Thread.Sleep(10);
+                Thread.Sleep(5);
             }
             Console.WriteLine("<color=#00ff00>stop to listener</color>");
         }
@@ -324,6 +334,7 @@ namespace SparrowLuaProfiler
         }
 
         private static Dictionary<int, string> m_strCacheDict = new Dictionary<int, string>(4096);
+
         public static Sample Deserialize(BinaryReader br)
         {
             Sample s = null;
@@ -337,9 +348,6 @@ namespace SparrowLuaProfiler
             s.name = ReadString(br);
 
             s.costTime = br.ReadInt32();
-    
-            //s.currentLuaMemory = br.ReadInt32();
-            //s.currentMonoMemory = br.ReadInt32();
 
             int count = br.ReadUInt16();
             for (int i = 0, imax = count; i < imax; i++)
@@ -359,6 +367,12 @@ namespace SparrowLuaProfiler
             s.costMonoGC = Math.Max(mono_gc, s.costMonoGC);
 
             return s;
+        }
+        public static SysInfo DeserializeSysInfo(BinaryReader br) 
+        {
+            byte b = br.ReadByte();
+            byte h = br.ReadByte();
+            return new SysInfo(b > 0, h > 0);
         }
 
         public static LuaRefInfo DeserializeRef(BinaryReader br)
