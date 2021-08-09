@@ -99,7 +99,9 @@ namespace SparrowLuaProfiler
         }
         private void OnSysInfoChange(SysInfo info) 
         {
-
+            m_displayInfo[1] = info.running ? "游戏已启动" : "游戏尚未启动";
+            m_displayInfo[2] = info.hooked ? "Hooked" : "Unhooked";
+            m_displayInfoChange = true;
             if (!info.running) 
             {
                 playBtn.Enabled = false;
@@ -115,34 +117,40 @@ namespace SparrowLuaProfiler
             playBtn.Enabled = true;
             pauseBtn.Enabled = false;
         }
-        private string m_displayInfo = string.Empty;
+        private string[] m_displayInfo = new string[3];
         private bool m_displayInfoChange = false;
         private string DisplayInfo 
         {
-            get { return m_displayInfo; }
-            set 
-            { 
-                m_displayInfo = value;
-                m_displayInfoChange = true;
+            get 
+            {
+                string output = "";
+                for (int i = 0; i < m_displayInfo.Length; i++) 
+                {
+                    output += m_displayInfo[i] +" ";
+                }
+                return output; 
             }
+
         }
         private void RefreshDisplayInfo() 
         {
             if (m_displayInfoChange) 
             {
-                this.tips.Text = m_displayInfo;
+                this.tips.Text = DisplayInfo;
                 m_displayInfoChange = false;
             }
         }
         private void OnClientConnected(string address) 
         {
-            DisplayInfo = string.Format("连接成功:{0}", address);
+            m_displayInfo[0] = string.Format("连接成功:{0}", address); ;
+            m_displayInfoChange = true;
             MessageBox.Show(DisplayInfo);
         }
 
         private void OnClientDisconnected() 
         {
-            MessageBox.Show("断开连接");
+            m_displayInfo[0] = "断开连接";
+            MessageBox.Show(DisplayInfo);
         }
 
         private void OnSelectedFrameChanged(int index)

@@ -153,7 +153,7 @@ namespace SparrowLuaProfiler
             this.injectButton.Name = "injectButton";
             this.injectButton.Size = new System.Drawing.Size(84, 23);
             this.injectButton.TabIndex = 1;
-            this.injectButton.Text = "注入";
+            this.injectButton.Text = "连接";
             this.injectButton.UseVisualStyleBackColor = true;
             this.injectButton.Click += new System.EventHandler(this.injectButton_Click);
             // 
@@ -191,7 +191,7 @@ namespace SparrowLuaProfiler
             this.deattachBtn.Name = "deattachBtn";
             this.deattachBtn.Size = new System.Drawing.Size(84, 23);
             this.deattachBtn.TabIndex = 5;
-            this.deattachBtn.Text = "解除";
+            this.deattachBtn.Text = "断开";
             this.deattachBtn.UseVisualStyleBackColor = true;
             this.deattachBtn.Click += new System.EventHandler(this.deattachBtn_Click);
 

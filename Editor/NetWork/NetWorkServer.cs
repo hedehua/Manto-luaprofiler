@@ -334,7 +334,7 @@ namespace SparrowLuaProfiler
                 catch { }
                 sendThread = null;
             }
-            
+            if (m_onClientDisconnected != null) m_onClientDisconnected();
         }
 
         private static Dictionary<int, string> m_strCacheDict = new Dictionary<int, string>(4096);
