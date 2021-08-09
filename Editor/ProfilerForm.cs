@@ -115,9 +115,29 @@ namespace SparrowLuaProfiler
             playBtn.Enabled = true;
             pauseBtn.Enabled = false;
         }
-        private void OnClientConnected() 
+        private string m_displayInfo = string.Empty;
+        private bool m_displayInfoChange = false;
+        private string DisplayInfo 
         {
-            MessageBox.Show("连接成功");
+            get { return m_displayInfo; }
+            set 
+            { 
+                m_displayInfo = value;
+                m_displayInfoChange = true;
+            }
+        }
+        private void RefreshDisplayInfo() 
+        {
+            if (m_displayInfoChange) 
+            {
+                this.tips.Text = m_displayInfo;
+                m_displayInfoChange = false;
+            }
+        }
+        private void OnClientConnected(string address) 
+        {
+            DisplayInfo = string.Format("连接成功:{0}", address);
+            MessageBox.Show(DisplayInfo);
         }
 
         private void OnClientDisconnected() 
@@ -502,11 +522,6 @@ namespace SparrowLuaProfiler
 
         private void Timer1_Tick(object sender, EventArgs e)
         {
-
-            lock (queue)
-            {
-                
-            }
             while (true)
             {
                 NetBase netbase = null;
@@ -556,6 +571,7 @@ namespace SparrowLuaProfiler
                 }
             }
             FillTimeline();
+            RefreshDisplayInfo();
         }
         private int pointIndexOnMouseOver = 0;
         private void Chart1_GetToolTipText(object sender, ToolTipEventArgs e)

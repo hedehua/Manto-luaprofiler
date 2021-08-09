@@ -56,7 +56,7 @@ namespace SparrowLuaProfiler
 
         private const int PACK_HEAD = 0x23333333;
         private static Action<NetBase> m_onReceiveSample;
-        private static Action m_onClientConnected;
+        private static Action<string> m_onClientConnected;
         private static Action m_onClientDisconnected;
         private static Queue<int> m_cmdQueue = new Queue<int>(32);
 
@@ -74,7 +74,7 @@ namespace SparrowLuaProfiler
         {
             m_onReceiveSample = null;
         }
-        public static void RegisterOnClientConnected(Action onConnected) 
+        public static void RegisterOnClientConnected(Action<string> onConnected) 
         {
             m_onClientConnected = onConnected;
         }
@@ -143,7 +143,11 @@ namespace SparrowLuaProfiler
             // 启动一个线程来发送请求
             sendThread = new Thread(DoSendMessage);
             sendThread.Start();
-            if (m_onClientConnected != null) m_onClientConnected();
+            if (m_onClientConnected != null)
+            {
+                string addressInfo =((IPEndPoint)tcpClient.Client.RemoteEndPoint).Address.ToString();
+                m_onClientConnected(addressInfo);
+            }
         }
 
         /// <summary>

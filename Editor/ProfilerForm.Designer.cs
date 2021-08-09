@@ -38,6 +38,7 @@ namespace SparrowLuaProfiler
             this.imageStrip = new System.Windows.Forms.ImageList(this.components);
             this.injectButton = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
+            this.tips = new System.Windows.Forms.Label();
             this.processCom = new System.Windows.Forms.ComboBox();
             this.deattachBtn = new System.Windows.Forms.Button();
             this.playBtn = new System.Windows.Forms.Button();
@@ -113,7 +114,7 @@ namespace SparrowLuaProfiler
             this.tvTaskList.AllowUserToAddRows = false;
             this.tvTaskList.AllowUserToDeleteRows = false;
             this.tvTaskList.AllowUserToOrderColumns = true;
-            this.tvTaskList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom)
+            this.tvTaskList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top )
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
             this.tvTaskList.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
@@ -130,7 +131,7 @@ namespace SparrowLuaProfiler
             this.monoGC});
             this.tvTaskList.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.tvTaskList.ImageList = null;
-            this.tvTaskList.Location = new System.Drawing.Point(1, 32+128);
+            this.tvTaskList.Location = new System.Drawing.Point(0, 32+128);
             this.tvTaskList.Name = "tvTaskList";
             this.tvTaskList.RowHeadersVisible = false;
             this.tvTaskList.RowHeadersWidth = 20;
@@ -164,6 +165,15 @@ namespace SparrowLuaProfiler
             this.label1.Size = new System.Drawing.Size(41, 12);
             this.label1.TabIndex = 3;
             this.label1.Text = "进程名";
+
+            this.tips.AutoSize = true;
+            this.tips.Location = new System.Drawing.Point(1, 580);
+            this.tips.Name = "tips";
+            this.tips.Size = new System.Drawing.Size(300, 12);
+            this.tips.ForeColor = System.Drawing.Color.Gray;
+            this.tips.TabIndex = 3;
+            this.tips.Text = "[info]";
+
             // 
             // processCom
             // 
@@ -327,6 +337,7 @@ namespace SparrowLuaProfiler
             this.Controls.Add(this.captureBtn);
             this.Controls.Add(this.chart1);
             this.Controls.Add(this.tvTaskList);
+            this.Controls.Add(this.tips);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
             this.Name = "ProfilerForm";
@@ -344,6 +355,7 @@ namespace SparrowLuaProfiler
         private System.Windows.Forms.ImageList imageStrip;
         private System.Windows.Forms.Button injectButton;
         private System.Windows.Forms.Label label1;
+        private System.Windows.Forms.Label tips;
         private System.Windows.Forms.ComboBox processCom;
         private System.Windows.Forms.Button deattachBtn;
         private System.Windows.Forms.Button playBtn;
