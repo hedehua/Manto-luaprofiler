@@ -21,7 +21,7 @@ namespace SparrowLuaProfiler
         public ProfilerForm()
         {
             InitializeComponent();
-            button1.Enabled = true;
+            clearBtn.Enabled = true;
             attachmentColumn.DefaultCellStyle.NullValue = null;
 
             NetWorkServer.RegisterOnReceiveSample(OnReceiveSample);
@@ -83,7 +83,7 @@ namespace SparrowLuaProfiler
         Queue<NetBase> queue = new Queue<NetBase>(32);
         Dictionary<string, TreeGridNode> nodeDict = new Dictionary<string, TreeGridNode>();
         List<Frame> frames = new List<Frame>();
-        Dictionary<string, Series> timelineDic = new Dictionary<string, Series>();
+
         List<Sample> sampleRequest = new List<Sample>();
 
         private Font boldFont;
@@ -158,7 +158,7 @@ namespace SparrowLuaProfiler
             if (index == selectedFrameIndex) return;
             selectedFrameIndex = index;
             ClearFrameInfo();
-            FillFormInfo();
+            FillCpuFormInfo();
         }
         private int SortSample(Sample p1, Sample p2) 
         {
@@ -166,8 +166,12 @@ namespace SparrowLuaProfiler
             if (p1.costTime < p2.costTime) return 1;
             return 0;
         }
+        private void FillMemFormInfo() 
+        {
+            
+        }
 
-        private void FillFormInfo()
+        private void FillCpuFormInfo()
         {
             if (selectedFrameIndex < 0 || selectedFrameIndex >= frames.Count) return;
 
@@ -209,42 +213,37 @@ namespace SparrowLuaProfiler
 
         const int MaxMS = 10000;
         double maxCostTime = 0;
+        double maxMemAlloc = 0;
         private void FillTimeline()
         {
-            GetOrCreateTimelineNode("GT");
+            string name = "All";
+            Series cpuSeries = this.chart1.Series[name];
+            Series memSeries = this.chart2.Series[name];
             // 少画一个，保证数据已经全部填充
             for (; lastPaintIndex < frames.Count - 1; lastPaintIndex++) 
             {
-                foreach (string name in timelineDic.Keys)
-                {
-                    Series series = GetOrCreateTimelineNode(name);
-                    Frame frame = frames[lastPaintIndex];
-                    double costTime = GetFrameCostTime(frame, name);
-                    series.Points.AddXY(lastPaintIndex, costTime);
-                    maxCostTime = costTime > maxCostTime ? costTime : maxCostTime;
-                }
+                Frame frame = frames[lastPaintIndex];
+                double costTime = GetFrameCostTime(frame, name);
+                cpuSeries.Points.AddXY(lastPaintIndex, costTime);
+                maxCostTime = costTime > maxCostTime ? costTime : maxCostTime;
+
+                double alloc = GetMemAlloc(frame);
+                memSeries.Points.AddXY(lastPaintIndex, alloc);
+                maxMemAlloc = alloc > maxMemAlloc ? alloc : maxMemAlloc;
             }
 
         }
-        private Series GetOrCreateTimelineNode(string name)
+
+        private double GetMemAlloc(Frame frame) 
         {
-            Series series1;
-            if (timelineDic.TryGetValue(name,out series1)) 
+            MList<Sample> samples = frame.GetSamples();
+            int alloc = 0;
+            for (int i = 0; i < samples.Count; i++)
             {
-                return series1;
+                Sample sample = samples[i];
+                alloc += sample.costLuaGC;
             }
-            System.Random random = new System.Random();
-            Series series = this.chart1.Series.Add(name);
-            series.ChartType = SeriesChartType.Column;
-            series.IsValueShownAsLabel = true;
-            series.MarkerStyle = MarkerStyle.None;
-            series.Color = System.Drawing.Color.FromArgb(random.Next(255), random.Next(255), random.Next(255));
-            series.BorderWidth = 1;
-            series.IsXValueIndexed = true;
-            series.IsValueShownAsLabel = false;
-         
-            timelineDic.Add(name, series);
-            return series;
+            return alloc / (double)MaxB;
         }
 
         private double GetFrameCostTime(Frame frame, string name = null)
@@ -254,7 +253,7 @@ namespace SparrowLuaProfiler
             for (int i = 0; i < samples.Count; i++) 
             {
                 Sample sample = samples[i];
-                if (name == "GT" || sample.name == name)
+                if (name == "All" || sample.name == name)
                 {
                     costTime += sample.costTime;
                 }
@@ -302,7 +301,7 @@ namespace SparrowLuaProfiler
             float totoalTime = (float)sampleNood.costTime / MaxMS;
             float intrnalCostTime = (float)sampleNood.internalCostTime / MaxMS;
             treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC), GetMemoryString(sampleNood.costMonoGC));
-            sampleNood.luaGC = 0;
+         //   sampleNood.luaGC = 0;
             Sample[] samples = sampleNood.childs.ToArray();
             Array.Sort(samples,SortSample);
             for (int i = 0, imax = samples.Length; i < imax; i++)
@@ -404,7 +403,17 @@ namespace SparrowLuaProfiler
             
         }
 
-        private void button1_Click(object sender, EventArgs e)
+        private void markBtn_Click(object sender, EventArgs e)
+        {
+        
+        }
+
+        private void memDiffBtn_Click(object sender, EventArgs e) 
+        {
+        
+        }
+
+        private void clearBtn_Click(object sender, EventArgs e)
         {
             ClearAll();
         }
@@ -413,10 +422,12 @@ namespace SparrowLuaProfiler
             selectedFrameIndex = -1;
             lastPaintIndex = 0;
             maxCostTime = 0;
+            maxMemAlloc = 0;
             queue.Clear();
             frames.Clear();
-            timelineDic.Clear();
+
             chart1.Series.Clear();
+            chart2.Series.Clear();
 
             ClearFrameInfo();
         }
@@ -425,6 +436,8 @@ namespace SparrowLuaProfiler
             selectedSamples = null;
             nodeDict.Clear();
             tvTaskList.Nodes.Clear();
+            memoryList.Nodes.Clear();
+            // TODO: clear memory node
         }
         #endregion
 
@@ -584,11 +597,20 @@ namespace SparrowLuaProfiler
         private int pointIndexOnMouseOver = 0;
         private void Chart1_GetToolTipText(object sender, ToolTipEventArgs e)
         {
+            Chart chart = sender as Chart;
             pointIndexOnMouseOver = e.HitTestResult.PointIndex;
             if (e.HitTestResult.ChartElementType == ChartElementType.DataPoint)
             {
                 DataPoint dp = e.HitTestResult.Series.Points[pointIndexOnMouseOver];
-                e.Text = string.Format("Frame: {0}\nDuration: {1:F3}ms", dp.XValue, dp.YValues[0]);
+                if (chart.Name == "cpuChart")
+                {
+                    e.Text = string.Format("Frame: {0}\nDuration: {1:F3}ms", dp.XValue, dp.YValues[0]);
+                }
+                else
+                {
+                    e.Text = string.Format("Frame: {0}\nAlloc: {1:F3}", dp.XValue, GetMemoryString((long)dp.YValues[0] * MaxB));
+                }
+                
             }
         }
 
@@ -622,9 +644,11 @@ namespace SparrowLuaProfiler
             Chart chart = (Chart)sender;
             Axis xAxis = chart.ChartAreas[0].AxisX;
             Axis yAxis = chart.ChartAreas[0].AxisY;
+            double max = chart.Name == "cpuChart" ? maxCostTime : maxMemAlloc;
+            max += 1;
 
             {
-                yAxis.Maximum = Math.Min(Math.Max(e.Delta > 0 ? yAxis.Maximum -= 0.25 : yAxis.Maximum += 0.25, 1), Math.Ceiling(maxCostTime < 1 ? 1 : maxCostTime));
+                yAxis.Maximum = Math.Min(Math.Max(e.Delta > 0 ? yAxis.Maximum -= 0.25 : yAxis.Maximum += 0.25, 1), Math.Ceiling(max < 1 ? 1 : max));
             }
       
             {

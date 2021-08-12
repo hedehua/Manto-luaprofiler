@@ -204,7 +204,7 @@ namespace SparrowLuaProfiler
         public string captureUrl = null;
         private string _fullName;
 
-        public int luaGC;
+      //  public int luaGC;
         public bool isCopy = false;
         public long copySelfLuaGC = -1;
         public long selfLuaGC
@@ -416,7 +416,7 @@ namespace SparrowLuaProfiler
         {
             calls += s.calls;
             costLuaGC += s.costLuaGC;
-            luaGC += s.costLuaGC;   // obsolete
+         //   luaGC += s.costLuaGC;   // obsolete
             costMonoGC += s.costMonoGC;
             costTime += s.costTime;
             internalCostTime += s.internalCostTime;
