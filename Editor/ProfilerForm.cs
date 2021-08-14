@@ -204,7 +204,7 @@ namespace SparrowLuaProfiler
                 LuaRefInfo luaRefInfo = currentPageMemoryInfos[i];
                 TreeGridNode treeNode = gridView.Nodes.Add();
 
-                treeNode.SetValues(luaRefInfo.name, luaRefInfo.addr.ToString("X"), GetMemoryString(luaRefInfo.size));
+                treeNode.SetValues(luaRefInfo.addr.ToString("X"), luaRefInfo.name,  GetMemoryString(luaRefInfo.size));
             }
             gridView.Refresh();
         }
@@ -770,21 +770,22 @@ namespace SparrowLuaProfiler
             tabPage.Text = string.IsNullOrEmpty(name) ? string.Format("memory{0}", tabPages.Count) : name;
             tabPage.UseVisualStyleBackColor = true;
 
-            TreeGridColumn memoryview = new TreeGridColumn();
-            System.Windows.Forms.DataGridViewTextBoxColumn addr = new System.Windows.Forms.DataGridViewTextBoxColumn();
-            System.Windows.Forms.DataGridViewTextBoxColumn memoryAlloc = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            DataGridViewTextBoxColumn memoryview = new DataGridViewTextBoxColumn();
+            TreeGridColumn addr = new TreeGridColumn();
+            DataGridViewTextBoxColumn memoryAlloc = new DataGridViewTextBoxColumn();
 
-            memoryview.DefaultNodeImage = null;
-            memoryview.FillWeight = 450F;
+            addr.HeaderText = "address";
+            addr.FillWeight = 50F;
+            addr.Name = "address";
+            addr.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+
+            memoryview.FillWeight = 300F;
             memoryview.HeaderText = "OverView";
             memoryview.MaxInputLength = 3000;
             memoryview.Name = "overview";
             memoryview.Resizable = System.Windows.Forms.DataGridViewTriState.True;
             memoryview.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
 
-            addr.HeaderText = "address";
-            addr.Name = "address";
-            addr.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
 
             memoryAlloc.HeaderText = "Alloc";
             memoryAlloc.Name = "memoryAlloc";
@@ -803,8 +804,8 @@ namespace SparrowLuaProfiler
             gridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
             gridView.ColumnHeadersHeight = 20;
             gridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            memoryview,
             addr,
+            memoryview,
             memoryAlloc});
             gridView.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             gridView.ImageList = null;
