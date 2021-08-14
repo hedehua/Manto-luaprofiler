@@ -75,14 +75,8 @@ namespace SparrowLuaProfiler
         /// <param name="osize"></param>
         /// <param name="nsize"></param>
         /// 
-
-        public static void PreLuaMemoryAlloc(IntPtr ptr, long osize, long nsize) 
-        {
-        }
-
         public static void PostLuaMemoryAlloc( IntPtr ptr, IntPtr buffer, long osize, long nsize)
         {
-       //     Utl.Log(string.Format("ptr:{0} buffer:{1} osize:{2} nsize:{3}", ptr, buffer, osize, nsize));
             if (!memory_hooked) return;
             if (m_mainL == IntPtr.Zero) return;
             if (osize == 0 && nsize == 0) return;

@@ -229,10 +229,9 @@ namespace SparrowLuaProfiler
             // 
             // chart1
             // 
-            this.chart1.Location = new System.Drawing.Point(1, 32);
+            this.chart1.Location = new System.Drawing.Point(0, 0);
             this.chart1.Name = "cpuChart";
             this.chart1.Size = new System.Drawing.Size(1416, 128);
-            this.chart1.TabIndex = 9;
             this.chart1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
@@ -243,9 +242,9 @@ namespace SparrowLuaProfiler
             this.chart1.MouseClick += Chart1_MouseClick;
             this.chart1.GetToolTipText += Chart1_GetToolTipText;
 
-            area.InnerPlotPosition.Auto = true;
             area.IsSameFontSizeForAllAxes = true;
-            
+            area.InnerPlotPosition.Auto = true;
+
             area.CursorX.AutoScroll = true;
             area.CursorX.IsUserEnabled = true;
             area.CursorX.IsUserSelectionEnabled = false;
@@ -255,7 +254,7 @@ namespace SparrowLuaProfiler
 
             area.AxisX.ScaleView.Zoomable = true;   
             area.AxisX.ScaleView.Position = 0;
-            area.AxisX.ScaleView.Size = 10;
+            area.AxisX.ScaleView.Size = 100;
             area.AxisX.Minimum = 0.0f;
 
             area.AxisX.ScrollBar.Enabled = true;
@@ -264,7 +263,6 @@ namespace SparrowLuaProfiler
             area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.None;
             area.AxisX.ScrollBar.IsPositionedInside = true;
             area.AxisX.LabelStyle.Enabled = false;
-
 
             area.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
             area.AxisY.MinorGrid.LineColor = System.Drawing.Color.LightGray;
@@ -293,10 +291,10 @@ namespace SparrowLuaProfiler
             /// 
             /// chart2
             /// ///
-            this.chart2.Location = new System.Drawing.Point(1, 160);
+            this.chart2.Location = new System.Drawing.Point(0, 148);
             this.chart2.Name = "memChart";
             this.chart2.Size = new System.Drawing.Size(1416, 128);
-            this.chart2.TabIndex = 10;
+
             this.chart2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
             | System.Windows.Forms.AnchorStyles.Left)
             | System.Windows.Forms.AnchorStyles.Right)));
@@ -319,7 +317,7 @@ namespace SparrowLuaProfiler
 
             area.AxisX.ScaleView.Zoomable = true;
             area.AxisX.ScaleView.Position = 0;
-            area.AxisX.ScaleView.Size = 10;
+            area.AxisX.ScaleView.Size = 100;
             area.AxisX.Minimum = 0.0f;
 
             area.AxisX.ScrollBar.Enabled = true;
@@ -355,10 +353,10 @@ namespace SparrowLuaProfiler
             // tabControl1
             // 
             this.tabControl1.Controls.Add(this.tabPage1);
-            this.tabControl1.Location = new System.Drawing.Point(0, 288);
+            this.tabControl1.Location = new System.Drawing.Point(0, 32);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
-            this.tabControl1.Size = new System.Drawing.Size(1416, 436);
+            this.tabControl1.Size = new System.Drawing.Size(1416, 688);
             this.tabControl1.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right | System.Windows.Forms.AnchorStyles.Top ;
             this.tabControl1.TabIndex = 0;
             this.tabControl1.SelectedIndexChanged += TabControl_SelectedIndexChanged;
@@ -366,7 +364,7 @@ namespace SparrowLuaProfiler
             // 
             // tabPage1
             // 
-            this.tabPage1.Location = new System.Drawing.Point(1, 22);
+            this.tabPage1.Location = new System.Drawing.Point(0, 22);
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(0);
             this.tabPage1.TabIndex = 0;
@@ -404,7 +402,8 @@ namespace SparrowLuaProfiler
 
             this.tvTaskList.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.tvTaskList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.tvTaskList.Size = new System.Drawing.Size(200, 410);
+            this.tvTaskList.Location = new System.Drawing.Point(0, 288);
+            this.tvTaskList.Size = new System.Drawing.Size(196, 372);
             this.tvTaskList.TabIndex = 0;
 
 
@@ -488,14 +487,14 @@ namespace SparrowLuaProfiler
             this.Controls.Add(this.captureBtn);
             this.Controls.Add(this.memoryDiffBtn);
             this.Controls.Add(this.markBtn);
-            this.Controls.Add(this.chart1);
-            this.Controls.Add(this.chart2);
-            this.Controls.Add(this.tvTaskList);
-          //  this.Controls.Add(this.memoryList);
+        //    this.Controls.Add(this.chart1);
+        //    this.Controls.Add(this.chart2);
+        //    this.Controls.Add(this.tvTaskList);
             this.Controls.Add(this.tips);
 
+            this.tabPage1.Controls.Add(this.chart1);
+            this.tabPage1.Controls.Add(this.chart2);
             this.tabPage1.Controls.Add(this.tvTaskList);
-
 
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));

@@ -204,7 +204,7 @@ namespace SparrowLuaProfiler
                 LuaRefInfo luaRefInfo = currentPageMemoryInfos[i];
                 TreeGridNode treeNode = gridView.Nodes.Add();
 
-                treeNode.SetValues(luaRefInfo.addr.ToString("X"), luaRefInfo.name,  GetMemoryString(luaRefInfo.size));
+                treeNode.SetValues(luaRefInfo.addr.ToString("X"), luaRefInfo.name, luaRefInfo.size);
             }
             gridView.Refresh();
         }
@@ -515,7 +515,7 @@ namespace SparrowLuaProfiler
                 }
                 for (int i = 0; i < markedLuaRefInfo.Count; i++) 
                 {
-                    LuaRefInfo luaRefInfo = currentPageMemoryInfos[i];
+                    LuaRefInfo luaRefInfo = markedLuaRefInfo[i];
                     diff.Remove(luaRefInfo.addr);
                 }
 
@@ -763,7 +763,7 @@ namespace SparrowLuaProfiler
         private TreeGridView AddPage(string name = null) 
         {
             System.Windows.Forms.TabPage tabPage = new TabPage();
-            tabPage.Location = new System.Drawing.Point(1, 22);
+            tabPage.Location = new System.Drawing.Point(0, 22);
             tabPage.Name = string.Format("tabPage{0}", tabPages.Count);
             tabPage.Padding = new System.Windows.Forms.Padding(0);
             tabPage.TabIndex = tabPages.Count + 1;
@@ -787,9 +787,9 @@ namespace SparrowLuaProfiler
             memoryview.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
 
 
-            memoryAlloc.HeaderText = "Alloc";
+            memoryAlloc.HeaderText = "Alloc(B)";
             memoryAlloc.Name = "memoryAlloc";
-            memoryAlloc.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+            memoryAlloc.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.Programmatic;
 
 
             TreeGridView gridView = new AdvancedDataGridView.TreeGridView();
@@ -816,7 +816,7 @@ namespace SparrowLuaProfiler
 
             gridView.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             gridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            gridView.Size = new System.Drawing.Size(200, 410);
+            gridView.Size = new System.Drawing.Size(200, 660);
             gridView.TabIndex = 0;
 
             tabPage.Controls.Add(gridView);
