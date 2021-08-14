@@ -107,11 +107,10 @@ namespace SparrowLuaProfiler
                     refInfo = LuaRefInfo.Create();
                     refInfo.size = (int)nsize;
                     refInfo.addr = buffer.ToInt64();
-                    lua_Debug debug = new lua_Debug();
-                    IntPtr ar = Marshal.AllocHGlobal(Marshal.SizeOf(debug));
-                    Marshal.StructureToPtr(debug, ar, false);
+                    IntPtr ar = Marshal.AllocHGlobal(Marshal.SizeOf(default(lua_Debug)));
                     if (LuaDLL.lua_getstack(m_mainL, 0, ar) > 0 && LuaDLL.lua_getinfo(m_mainL, "nS", ar) > 0)
                     {
+                        lua_Debug debug = (lua_Debug)Marshal.PtrToStructure(ar, typeof(lua_Debug));
                         refInfo.name = debug.ToString();
                     }
                     else

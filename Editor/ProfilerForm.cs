@@ -520,7 +520,7 @@ namespace SparrowLuaProfiler
                 }
 
                 // 1. write to local file
-                string fullPath = string.Format("{0}/memory-{1}-{2}_{3}.luam", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), DateTime.Now.ToString("yyyy.MM.dd-hh.mm.ss"), markedTabIndex, tabControl1.SelectedIndex);
+                string fullPath = string.Format("{0}/diff-{1}-{2}_{3}.luam", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), DateTime.Now.ToString("yyyy.MM.dd-hh.mm.ss"), markedTabIndex, tabControl1.SelectedIndex);
                 FileStream fs = new FileStream(fullPath, FileMode.Create);
                 MBinaryWriter bw = new MBinaryWriter(fs);
                 bw.Write(diff.Count);      // header <int> count;

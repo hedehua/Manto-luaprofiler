@@ -90,7 +90,7 @@ namespace SparrowLuaProfiler
         
         public override string ToString()
         {
-            return string.Format("[0]{0} {1} {2}",what, name, source, linedefined);
+            return string.Format("{0} {1} {2}", name, source, linedefined);
         }
        
     }
