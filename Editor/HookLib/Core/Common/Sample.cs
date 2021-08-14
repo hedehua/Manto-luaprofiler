@@ -40,30 +40,237 @@ using System.Text;
 
 namespace SparrowLuaProfiler
 {
+    public class NetUtil 
+    {
+        public static void Clear() 
+        {
+            m_strCacheDict.Clear();
+            m_strDict.Clear();
+            m_key = 0;
+        }
+        private static int m_key = 0;
+        public static int GetUniqueKey()
+        {
+            return m_key++;
+        }
+        private static Dictionary<string, KeyValuePair<int, byte[]>> m_strDict = new Dictionary<string, KeyValuePair<int, byte[]>>(8192);
+        private static bool GetBytes(string s, out byte[] result, out int index)
+        {
+            bool ret = true;
+            KeyValuePair<int, byte[]> keyValuePair;
+            if (!m_strDict.TryGetValue(s, out keyValuePair))
+            {
+                result = Encoding.UTF8.GetBytes(s);
+                index = GetUniqueKey();
+                keyValuePair = new KeyValuePair<int, byte[]>(index, result);
+                m_strDict.Add(s, keyValuePair);
+                ret = false;
+            }
+            else
+            {
+                index = keyValuePair.Key;
+                result = keyValuePair.Value;
+            }
+
+            return ret;
+        }
+        public static void Serialize(NetBase o, BinaryWriter bw)
+        {
+            if (o is Sample)
+            {
+                Sample s = (Sample)o;
+
+                bw.Write(s.seq);
+                bw.Write(s.currentTime);
+                bw.Write(s.calls);
+                bw.Write(s.costLuaGC);
+                bw.Write(s.costMonoGC);
+                WriteString(bw, s.name);
+
+                bw.Write(s.costTime);
+
+                bw.Write((ushort)s.childs.Count);
+
+                var childs0 = s.childs;
+                for (int i0 = 0, i0max = childs0.Count; i0 < i0max; i0++)
+                {
+                    Serialize(childs0[i0], bw);
+                }
+            }
+            else if (o is SysInfo)
+            {
+                SysInfo s = (SysInfo)o;
+                bw.Write(s.state_created ? (byte)1 : (byte)0);
+                bw.Write(s.hooked ? (byte)1 : (byte)0);
+                bw.Write(s.memory_hooked ? (byte)1 : (byte)0);
+            }
+            else if (o is LuaRefInfo)
+            {
+                LuaRefInfo r = (LuaRefInfo)o;
+
+                WriteString(bw, r.name);
+                bw.Write(r.addr);
+                bw.Write(r.size);
+            }
+            else if (o is LuaFullMemory)
+            {
+                LuaFullMemory f = (LuaFullMemory)o;
+                WriteString(bw, f.fullPath);
+            }
+
+        }
+
+        public static void WriteString(BinaryWriter bw, string name)
+        {
+            byte[] datas;
+            int index = 0;
+            bool isRef = GetBytes(name, out datas, out index);
+            bw.Write((byte)(isRef ? 1 : 0));
+            bw.Write((short)index);
+            if (!isRef)
+            {
+                bw.Write(datas.Length);
+                bw.Write(datas);
+            }
+        }
+
+        private static Dictionary<int, string> m_strCacheDict = new Dictionary<int, string>(4096);
+
+        public static Sample Deserialize(BinaryReader br)
+        {
+            Sample s = null;
+
+            s = new Sample();
+            s.seq = br.ReadInt64();
+            s.currentTime = br.ReadInt64();
+            s.calls = br.ReadInt32();
+            s.costLuaGC = br.ReadInt32();
+            s.costMonoGC = br.ReadInt32();
+            s.name = ReadString(br);
+
+            s.costTime = br.ReadInt32();
+
+            int count = br.ReadUInt16();
+            for (int i = 0, imax = count; i < imax; i++)
+            {
+                Deserialize(br).fahter = s;
+            }
+
+            int lua_gc = 0;
+            int mono_gc = 0;
+            for (int i = 0, imax = s.childs.Count; i < imax; i++)
+            {
+                var item = s.childs[i];
+                lua_gc += item.costLuaGC;
+                mono_gc += item.costMonoGC;
+            }
+            s.costLuaGC = Math.Max(lua_gc, s.costLuaGC);
+            s.costMonoGC = Math.Max(mono_gc, s.costMonoGC);
+
+            return s;
+        }
+
+        public static LuaRefInfo DeserializeLuaRefInfo(BinaryReader br)
+        {
+            string name = ReadString(br);
+            long addr = br.ReadInt64();
+            int size = br.ReadInt32();
+            return LuaRefInfo.Create(name, addr, size);
+        }
+
+        public static SysInfo DeserializeSysInfo(BinaryReader br)
+        {
+            byte b = br.ReadByte();
+            byte h = br.ReadByte();
+            byte m = br.ReadByte();
+            return new SysInfo(b > 0, h > 0, m > 0);
+        }
+
+        public static LuaFullMemory DeserializeLuaFullMemory(BinaryReader br)
+        {
+            string path = ReadString(br);
+            return new LuaFullMemory(path);
+        }
+
+        public static LuaRefInfo DeserializeRef(BinaryReader br)
+        {
+            LuaRefInfo refInfo = LuaRefInfo.Create();
+
+            refInfo.name = ReadString(br);
+            refInfo.addr = br.ReadInt64();
+            refInfo.addr = br.ReadInt32();
+
+            return refInfo;
+        }
+
+        public static string ReadString(BinaryReader br)
+        {
+            string result = null;
+
+            bool isRef = br.ReadByte() == 1 ? true : false;
+            int index = br.ReadInt16();
+            if (!isRef)
+            {
+                int len = br.ReadInt32();
+                byte[] datas = br.ReadBytes(len);
+                result = string.Intern(Encoding.UTF8.GetString(datas));
+                m_strCacheDict[index] = result;
+            }
+            else
+            {
+                result = m_strCacheDict[index];  // TODO:: 1. 这里有报错 2. 显示的问题
+            }
+
+            return result;
+        }
+    }
     public abstract class NetBase
     {
         public abstract void Restore();
     }
+    public class Cmd : NetBase
+    {
+
+        public const int handshake = 0;
+        public const int disconnect = 1;
+        public const int input = 2; // 0 unhook, 1 hook, 2 memory hook, 3, memory unhook, 4, capture
+        public const int seq = 4;
+
+        public int msgId;
+        public int arg;
+        public override void Restore()
+        {
+            
+        }
+        public Cmd(int t, int a) 
+        {
+            this.msgId = t;
+            this.arg = a;
+        }
+    }
     public class SysInfo : NetBase
     {
-        public bool running; // 0 state closed, 1 state created
+        public bool state_created; // 0 state closed, 1 state created
         public bool hooked;
-        public override void Restore() { }
-        public SysInfo(bool c, bool h)
+        public bool memory_hooked;
+        public override void Restore() 
+        {
+           
+        }
+        public SysInfo(bool c, bool h, bool m) 
         {
             hooked = h;
-            running = c;
+            state_created = c;
+            memory_hooked = m;
         }
     }
 
     public class LuaRefInfo : NetBase
     {
         #region field
-        public byte cmd; //1添加、0移除
-        public int frameCount;
         public string name;
-        public string addr;
-        public byte type; //1 function 2 table
+        public long addr;
+        public int size;
         #endregion
 
         #region pool
@@ -74,13 +281,12 @@ namespace SparrowLuaProfiler
             return r;
         }
 
-        public static LuaRefInfo Create(byte cmd, string name, string addr, byte type)
+        public static LuaRefInfo Create(/*byte cmd, */string name, long addr/*, byte type*/, int size)
         {
             LuaRefInfo r = m_pool.GetObject();
-            r.cmd = cmd;
             r.name = name;
             r.addr = addr;
-            r.type = type;
+            r.size = size;
             return r;
         }
 
@@ -92,12 +298,9 @@ namespace SparrowLuaProfiler
         public LuaRefInfo Clone()
         {
             LuaRefInfo result = new LuaRefInfo();
-
-            result.cmd = this.cmd;
-            result.frameCount = this.frameCount;
             result.name = this.name;
             result.addr = this.addr;
-            result.type = this.type;
+            result.size = this.size;
 
             return result;
         }
@@ -105,84 +308,18 @@ namespace SparrowLuaProfiler
         #endregion
     }
 
-    public class LuaDiffInfo : NetBase
+    public class LuaFullMemory : NetBase
     {
-        #region field
-        public Dictionary<string, LuaTypes> addRef = new Dictionary<string, LuaTypes>();
-        public Dictionary<string, List<string>> addDetail = new Dictionary<string, List<string>>();
-        public Dictionary<string, LuaTypes> rmRef = new Dictionary<string, LuaTypes>();
-        public Dictionary<string, List<string>> rmDetail = new Dictionary<string, List<string>>();
-        public Dictionary<string, LuaTypes> nullRef = new Dictionary<string, LuaTypes>();
-        public Dictionary<string, List<string>> nullDetail = new Dictionary<string, List<string>>();
-        #endregion
-
-        #region pool
-        private static ObjectPool<LuaDiffInfo> m_pool = new ObjectPool<LuaDiffInfo>(32);
-        public static LuaDiffInfo Create()
-        {
-            LuaDiffInfo r = m_pool.GetObject();
-            r.addRef.Clear();
-            r.addDetail.Clear();
-            r.rmRef.Clear();
-            r.rmDetail.Clear();
-            r.nullRef.Clear();
-            return r;
-        }
+        public string fullPath;
+        
         public override void Restore()
         {
-            m_pool.Store(this);
+            
         }
-        #endregion
-
-        #region api
-        public void PushAddRef(string addKey, int addType)
+        public LuaFullMemory(string path) 
         {
-            addRef.Add(addKey, (LuaTypes)addType);
+            fullPath = path;
         }
-
-        public void PushAddDetail(string addKey, string value)
-        {
-            List<string> list;
-            if (!addDetail.TryGetValue(addKey, out list))
-            {
-                list = new List<string>();
-                addDetail[addKey] = list;
-            }
-            list.Add(value);
-        }
-
-        public void PushRmRef(string addKey, int addType)
-        {
-            rmRef.Add(addKey, (LuaTypes)addType);
-        }
-
-        public void PushRmDetail(string key, string value)
-        {
-            List<string> list;
-            if (!rmDetail.TryGetValue(key, out list))
-            {
-                list = new List<string>();
-                rmDetail[key] = list;
-            }
-            list.Add(value);
-        }
-
-        public void PushNullRef(string addKey, int addType)
-        {
-            nullRef.Add(addKey, (LuaTypes)addType);
-        }
-
-        public void PushNullDetail(string addKey, string value)
-        {
-            List<string> list;
-            if (!nullDetail.TryGetValue(addKey, out list))
-            {
-                list = new List<string>();
-                nullDetail[addKey] = list;
-            }
-            list.Add(value);
-        }
-        #endregion
     }
 
     public class Sample : NetBase

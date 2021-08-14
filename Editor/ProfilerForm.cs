@@ -29,7 +29,7 @@ namespace SparrowLuaProfiler
             NetWorkServer.RegisterOnClientDisconnected(OnClientDisconnected);
             NetWorkServer.BeginListen("0.0.0.0", 2333);
             timer1.Enabled = true;
-            boldFont = new Font(tvTaskList.DefaultCellStyle.Font, FontStyle.Bold);
+            regularFont1 = new Font(tvTaskList.DefaultCellStyle.Font, FontStyle.Regular);
         }
 
         protected override void OnClosed(EventArgs e)
@@ -44,6 +44,7 @@ namespace SparrowLuaProfiler
         {
             private Dictionary<string, Sample> dict;
             private MList<Sample> samples;
+
             public bool AddSample(Sample sample)
             {
                 if (dict == null) dict = new Dictionary<string, Sample>();
@@ -53,7 +54,7 @@ namespace SparrowLuaProfiler
                     return false;
                 }
                 long currentTime = GetCurrentTime();
-                if (sample.currentTime < currentTime) 
+                if (sample.currentTime < currentTime)
                 {
                     return false;
                 }
@@ -64,14 +65,14 @@ namespace SparrowLuaProfiler
 
                 dict.Add(sample.name, sample);
                 samples.Add(sample);
-                return true ;
+                return true;
             }
             public void Clear()
             {
                 if (dict != null) dict.Clear();
                 if (samples != null) samples.Clear();
             }
-            public long GetCurrentTime() 
+            public long GetCurrentTime()
             {
                 if (samples.Count == 0) return 0;
                 return samples[0].currentTime;
@@ -82,11 +83,14 @@ namespace SparrowLuaProfiler
         #region refresh
         Queue<NetBase> queue = new Queue<NetBase>(32);
         Dictionary<string, TreeGridNode> nodeDict = new Dictionary<string, TreeGridNode>();
+
         List<Frame> frames = new List<Frame>();
+        List<LuaFullMemory> luaFullMemories = new List<LuaFullMemory>();
+        List<LuaRefInfo> currentPageMemoryInfos = new List<LuaRefInfo>();
 
         List<Sample> sampleRequest = new List<Sample>();
 
-        private Font boldFont;
+        private Font regularFont1;
         private int selectedFrameIndex =-1;
         private int lastPaintIndex = 0;
         Sample[] selectedSamples;
@@ -99,15 +103,22 @@ namespace SparrowLuaProfiler
         }
         private void OnSysInfoChange(SysInfo info) 
         {
-            m_displayInfo[1] = info.running ? "游戏已启动" : "游戏尚未启动";
-            m_displayInfo[2] = info.hooked ? "Hooked" : "Unhooked";
+            m_displayInfo[1] = info.state_created ? "游戏已启动" : "游戏尚未启动";
+            m_displayInfo[2] = info.hooked ? "已设置钩子" : "未设置钩子";
+            m_displayInfo[3] = info.memory_hooked ? "内存监控开启" : "内存监控未开启";
             m_displayInfoChange = true;
-            if (!info.running) 
+      
+            captureBtn.Enabled = recordMemBox.Checked && info.state_created;
+            recordMemBox.Checked = info.memory_hooked;
+            if (!info.state_created) 
             {
                 playBtn.Enabled = false;
                 pauseBtn.Enabled = false;
+                recordMemBox.Enabled = true;
                 return;
             }
+            recordMemBox.Enabled = false;
+            
             if (info.hooked)
             {
                 playBtn.Enabled = false;
@@ -117,8 +128,9 @@ namespace SparrowLuaProfiler
             playBtn.Enabled = true;
             pauseBtn.Enabled = false;
         }
-        private string[] m_displayInfo = new string[3];
+        private string[] m_displayInfo = new string[4];
         private bool m_displayInfoChange = false;
+        private bool m_connected = false;
         private string DisplayInfo 
         {
             get 
@@ -126,7 +138,8 @@ namespace SparrowLuaProfiler
                 string output = "";
                 for (int i = 0; i < m_displayInfo.Length; i++) 
                 {
-                    output += m_displayInfo[i] +" ";
+                    if (string.IsNullOrEmpty(m_displayInfo[i])) continue;
+                    output += m_displayInfo[i] +"| ";
                 }
                 return output; 
             }
@@ -144,12 +157,15 @@ namespace SparrowLuaProfiler
         {
             m_displayInfo[0] = string.Format("连接成功:{0}", address); ;
             m_displayInfoChange = true;
+            m_connected = true;
             MessageBox.Show(DisplayInfo);
         }
 
         private void OnClientDisconnected() 
         {
             m_displayInfo[0] = "断开连接";
+            m_connected = false;
+            this.recordMemBox.Enabled = false;
             MessageBox.Show(DisplayInfo);
         }
 
@@ -158,7 +174,7 @@ namespace SparrowLuaProfiler
             if (index == selectedFrameIndex) return;
             selectedFrameIndex = index;
             ClearFrameInfo();
-            FillCpuFormInfo();
+            FillCPUFormInfo();
         }
         private int SortSample(Sample p1, Sample p2) 
         {
@@ -166,12 +182,34 @@ namespace SparrowLuaProfiler
             if (p1.costTime < p2.costTime) return 1;
             return 0;
         }
-        private void FillMemFormInfo() 
+        private void FillMemFormInfo(int index) 
         {
-            
+            LuaFullMemory luaFullMemory = luaFullMemories[index];
+            FileStream fs = new FileStream(luaFullMemory.fullPath, FileMode.Open);
+            BinaryReader br = new BinaryReader(fs);
+            int count = br.ReadInt32();
+            // serialize every time, because it may cost too many memory.
+            currentPageMemoryInfos.Clear();
+            for (int i = 0; i < count; i++)
+            {
+                LuaRefInfo luaRefInfo = NetUtil.DeserializeLuaRefInfo(br);
+                currentPageMemoryInfos.Add(luaRefInfo);
+            }
+            fs.Close();
+
+            TreeGridView gridView = GetOrCreatePage(index, System.IO.Path.GetFileName(luaFullMemory.fullPath));
+            gridView.Nodes.Clear();
+            for (int i = 0; i < currentPageMemoryInfos.Count && i < 100; i++)
+            {
+                LuaRefInfo luaRefInfo = currentPageMemoryInfos[i];
+                TreeGridNode treeNode = gridView.Nodes.Add();
+
+                treeNode.SetValues(luaRefInfo.name, luaRefInfo.addr.ToString("X"), GetMemoryString(luaRefInfo.size));
+            }
+            gridView.Refresh();
         }
 
-        private void FillCpuFormInfo()
+        private void FillCPUFormInfo()
         {
             if (selectedFrameIndex < 0 || selectedFrameIndex >= frames.Count) return;
 
@@ -193,11 +231,46 @@ namespace SparrowLuaProfiler
                 {
                     Console.WriteLine(string.Format("send cmd [{0}]{1} {2}", i, sample.seq, sample.name));
                     sampleRequest.Add(sample);
-                    NetWorkServer.SendCmd((int)sample.seq);
+                    NetWorkServer.SendCmd(Cmd.seq, (int)sample.seq);
                 }
                 
             }
+
             tvTaskList.Refresh();
+            this.SelectTab(0);
+        }
+
+        private void SelectTab(int index) 
+        {
+            this.tabControl1.SelectTab(index);
+            RefreshButtonDueToTabChange(index);
+        }
+        private void RefreshButtonDueToTabChange(int index) 
+        {
+            if (index > 0)
+            {
+                if (markedTabIndex == index)
+                {
+                    this.markBtn.Text = "已标记";
+                }
+                else
+                {
+                    this.markBtn.Text = "标记";
+                }
+                this.markBtn.Enabled = true;
+            }
+            else
+            {
+                this.markBtn.Enabled = false;
+            }
+            if (index > 0 && markedTabIndex > 0 && markedTabIndex != index) 
+            {
+                this.memoryDiffBtn.Enabled = true;
+            }
+            else
+            {
+                this.memoryDiffBtn.Enabled = false;
+            }
         }
 
         private void RefreshFormInfo(Sample sample) 
@@ -297,11 +370,10 @@ namespace SparrowLuaProfiler
 
         private void DoFillChildFormInfo(Sample sampleNood, TreeGridNode treeNode)
         {
-            treeNode.DefaultCellStyle.Font = boldFont;
+            treeNode.DefaultCellStyle.Font = regularFont1;
             float totoalTime = (float)sampleNood.costTime / MaxMS;
             float intrnalCostTime = (float)sampleNood.internalCostTime / MaxMS;
             treeNode.SetValues(null, sampleNood.name, totoalTime.ToString("f3"), (totoalTime / (float)sampleNood.calls).ToString("f3"),  sampleNood.calls.ToString(), GetMemoryString(sampleNood.costLuaGC), GetMemoryString(sampleNood.costMonoGC));
-         //   sampleNood.luaGC = 0;
             Sample[] samples = sampleNood.childs.ToArray();
             Array.Sort(samples,SortSample);
             for (int i = 0, imax = samples.Length; i < imax; i++)
@@ -392,25 +464,81 @@ namespace SparrowLuaProfiler
         }
         private void playBtn_Click(object sender, EventArgs e) 
         {
-            NetWorkServer.SendCmd(1);
+            NetWorkServer.SendCmd(Cmd.input, 1);
         }
         private void pauseBtn_Click(object sender, EventArgs e) 
         {
-            NetWorkServer.SendCmd(2);
-        }
-        private void captureBtn_Click(object sender, EventArgs e) 
-        {
-            
+            NetWorkServer.SendCmd(Cmd.input, 0);
         }
 
+        private void recordMemBox_Changed(object sender, EventArgs e) 
+        {
+            CheckBox box = (CheckBox)sender;
+            NetWorkServer.SendCmd(Cmd.input, box.Checked ? 3 : 2);
+        }
+
+        private void captureBtn_Click(object sender, EventArgs e) 
+        {
+            NetWorkServer.SendCmd(Cmd.input, 4);
+        }
+
+        private int markedTabIndex = 0;
+        private List<LuaRefInfo> markedLuaRefInfo = null;
         private void markBtn_Click(object sender, EventArgs e)
         {
-        
+            if (tabControl1.SelectedIndex > 0) 
+            {
+                markedTabIndex = tabControl1.SelectedIndex;
+                markedLuaRefInfo = new List<LuaRefInfo>();
+                for (int i = 0; i < currentPageMemoryInfos.Count; i++) 
+                {
+                    markedLuaRefInfo.Add(currentPageMemoryInfos[i]);
+                }
+                RefreshButtonDueToTabChange(tabControl1.SelectedIndex);
+            }
         }
 
         private void memDiffBtn_Click(object sender, EventArgs e) 
         {
-        
+            if (markedLuaRefInfo == null) 
+            {
+                MessageBox.Show("尚未标记需要对比的项");
+                return;
+            }
+            if (markedTabIndex > 0 && tabControl1.SelectedIndex > 0 && markedTabIndex != tabControl1.SelectedIndex) 
+            {
+                Dictionary<long, LuaRefInfo> diff = new Dictionary<long, LuaRefInfo>();
+                for (int i = 0; i < currentPageMemoryInfos.Count; i++)
+                {
+                    LuaRefInfo luaRefInfo = currentPageMemoryInfos[i];
+                    diff.Add(luaRefInfo.addr, luaRefInfo);
+                }
+                for (int i = 0; i < markedLuaRefInfo.Count; i++) 
+                {
+                    LuaRefInfo luaRefInfo = currentPageMemoryInfos[i];
+                    diff.Remove(luaRefInfo.addr);
+                }
+
+                // 1. write to local file
+                string fullPath = string.Format("{0}/memory-{1}-{2}_{3}.luam", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), DateTime.Now.ToString("yyyy.MM.dd-hh.mm.ss"), markedTabIndex, tabControl1.SelectedIndex);
+                FileStream fs = new FileStream(fullPath, FileMode.Create);
+                MBinaryWriter bw = new MBinaryWriter(fs);
+                bw.Write(diff.Count);      // header <int> count;
+                foreach (var item in diff)
+                {
+                    NetUtil.Serialize(item.Value, bw);
+                }
+                fs.Close();
+
+                // 2. add new tab to display
+                LuaFullMemory luaFullMemory = new LuaFullMemory(fullPath);
+                AddMemoryReport(luaFullMemory);
+
+                MessageBox.Show(string.Format("新增数据:{0}", diff.Count));
+
+                return;
+            }
+            MessageBox.Show("无效的对比");
         }
 
         private void clearBtn_Click(object sender, EventArgs e)
@@ -420,24 +548,39 @@ namespace SparrowLuaProfiler
         private void ClearAll()
         {
             selectedFrameIndex = -1;
+            markedTabIndex = 0;
             lastPaintIndex = 0;
             maxCostTime = 0;
             maxMemAlloc = 0;
             queue.Clear();
             frames.Clear();
+            markedLuaRefInfo = null;
+            currentPageMemoryInfos.Clear();
 
             chart1.Series.Clear();
             chart2.Series.Clear();
 
             ClearFrameInfo();
+            ClearAllPages();
+        }
+        private void ClearAllPages() 
+        {
+            for (int i = 0; i < gridViews.Count; i++) 
+            {
+                gridViews[i].Nodes.Clear();
+            }
+            gridViews.Clear();
+            for (int i = 0; i < tabPages.Count; i++) 
+            {
+                this.Controls.Remove(tabPages[i]);
+            }
+            this.tabPages.Clear();
         }
         private void ClearFrameInfo() 
         {
             selectedSamples = null;
             nodeDict.Clear();
             tvTaskList.Nodes.Clear();
-            memoryList.Nodes.Clear();
-            // TODO: clear memory node
         }
         #endregion
 
@@ -545,16 +688,16 @@ namespace SparrowLuaProfiler
         {
             while (true)
             {
-                NetBase netbase = null;
+                NetBase package = null;
                 lock (queue) 
                 {
                     if (queue.Count == 0) break;
-                    if (queue.Count > 0) netbase = queue.Dequeue();
+                    if (queue.Count > 0) package = queue.Dequeue();
                 }
                 
-                if (netbase is Sample)
+                if (package is Sample)
                 {
-                    Sample sample = netbase as Sample;
+                    Sample sample = package as Sample;
                     // 先在请求列表中查找
                     for (int i = sampleRequest.Count - 1; i >= 0; i--)
                     {
@@ -585,15 +728,103 @@ namespace SparrowLuaProfiler
                     frames.Add(frame);
                     frame.AddSample(sample);
                 }
-                if (netbase is SysInfo)
+                if (package is SysInfo)
                 {
-                    SysInfo sysInfo = netbase as SysInfo;
+                    SysInfo sysInfo = package as SysInfo;
                     OnSysInfoChange(sysInfo);
+                }
+                if (package is LuaFullMemory) 
+                {
+                    AddMemoryReport(package as LuaFullMemory);
                 }
             }
             FillTimeline();
             RefreshDisplayInfo();
         }
+
+        private void AddMemoryReport( LuaFullMemory luaFullMemory) 
+        {
+            luaFullMemories.Add(luaFullMemory);
+            int index = luaFullMemories.Count - 1;
+            FillMemFormInfo(index);
+            SelectTab(index + 1);
+        }
+
+        private List<TabPage> tabPages = new List<TabPage>();
+        private List<TreeGridView> gridViews = new List<TreeGridView>();
+        private TreeGridView GetOrCreatePage(int index,string name = null) 
+        {
+            if(index >=0 && index < gridViews.Count)
+            {
+                return gridViews[index];
+            }
+            return AddPage(name);
+        }
+        private TreeGridView AddPage(string name = null) 
+        {
+            System.Windows.Forms.TabPage tabPage = new TabPage();
+            tabPage.Location = new System.Drawing.Point(1, 22);
+            tabPage.Name = string.Format("tabPage{0}", tabPages.Count);
+            tabPage.Padding = new System.Windows.Forms.Padding(0);
+            tabPage.TabIndex = tabPages.Count + 1;
+            tabPage.Text = string.IsNullOrEmpty(name) ? string.Format("memory{0}", tabPages.Count) : name;
+            tabPage.UseVisualStyleBackColor = true;
+
+            TreeGridColumn memoryview = new TreeGridColumn();
+            System.Windows.Forms.DataGridViewTextBoxColumn addr = new System.Windows.Forms.DataGridViewTextBoxColumn();
+            System.Windows.Forms.DataGridViewTextBoxColumn memoryAlloc = new System.Windows.Forms.DataGridViewTextBoxColumn();
+
+            memoryview.DefaultNodeImage = null;
+            memoryview.FillWeight = 450F;
+            memoryview.HeaderText = "OverView";
+            memoryview.MaxInputLength = 3000;
+            memoryview.Name = "overview";
+            memoryview.Resizable = System.Windows.Forms.DataGridViewTriState.True;
+            memoryview.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+
+            addr.HeaderText = "address";
+            addr.Name = "address";
+            addr.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+
+            memoryAlloc.HeaderText = "Alloc";
+            memoryAlloc.Name = "memoryAlloc";
+            memoryAlloc.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
+
+
+            TreeGridView gridView = new AdvancedDataGridView.TreeGridView();
+            gridView.AllowUserToAddRows = false;
+            gridView.AllowUserToDeleteRows = false;
+            gridView.AllowUserToOrderColumns = true;
+            gridView.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
+            | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            gridView.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
+            gridView.BackgroundColor = System.Drawing.Color.White;
+            gridView.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
+            gridView.ColumnHeadersHeight = 20;
+            gridView.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
+            memoryview,
+            addr,
+            memoryAlloc});
+            gridView.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
+            gridView.ImageList = null;
+            gridView.Location = new System.Drawing.Point(0, 0);
+            gridView.Name = "memoryList";
+            gridView.RowHeadersVisible = false;
+            gridView.RowHeadersWidth = 20;
+
+            gridView.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
+            gridView.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
+            gridView.Size = new System.Drawing.Size(200, 410);
+            gridView.TabIndex = 0;
+
+            tabPage.Controls.Add(gridView);
+            tabPages.Add(tabPage);
+            gridViews.Add(gridView);
+            this.tabControl1.Controls.Add(tabPage);
+            return gridView;
+        }
+
         private int pointIndexOnMouseOver = 0;
         private void Chart1_GetToolTipText(object sender, ToolTipEventArgs e)
         {
@@ -667,6 +898,16 @@ namespace SparrowLuaProfiler
         private void GridView_RowEnter(object sender, DataGridViewCellEventArgs e) 
         {
             Console.WriteLine("Row Enter "+e.RowIndex);
+        }
+        private void TabControl_SelectedIndexChanged(object sender, EventArgs e) 
+        {
+            TabControl tabControl = sender as TabControl;
+            Console.WriteLine("select:" + tabControl.SelectedIndex);
+            if (tabControl.SelectedIndex > 0)  // skip the first one
+            {
+                FillMemFormInfo(tabControl.SelectedIndex - 1);
+            }
+            RefreshButtonDueToTabChange(tabControl.SelectedIndex);
         }
     }
 }

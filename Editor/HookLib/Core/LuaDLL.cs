@@ -75,23 +75,24 @@ namespace SparrowLuaProfiler
     public struct lua_Debug 
     {
         public int evt;
-        public string name;
-        public string namewhat;
-        public string what;
-        public string source;
-        public int currentline;     /* (l) */
-        public int linedefined;     /* (S) */
-        public int lastlinedefined; /* (S) */
-#pragma warning disable 0169
-        byte nups;                  /* (u) number of upvalues */
-        byte nparams;               /* (u) number of parameters */
-        byte isvararg;              /* (u) */
-        byte istailcall;            /* (t) */
-        [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 60)]
-        string short_src;           /* (S) */
-        /* private part */
-        IntPtr i_ci;                /* active function */
-#pragma warning restore 0169
+        public string name;                /* (n) */
+        public string namewhat;            /* (n) `global', `local', `field', `method' */
+        public string what;                /* (S) `Lua', `C', `main', `tail' */
+        public string source;              /* (S) */
+        public int currentline;             /* (l) */
+        public int nups;                    /* (u) number of upvalues */
+        public int linedefined;             /* (S) */
+        public int lastlinedefined;         /* (S) */
+        [MarshalAs(UnmanagedType.ByValArray, SizeConst = 128)]
+        public byte[] _short_src;
+        public int i_ci;                    /* active function */
+
+        
+        public override string ToString()
+        {
+            return string.Format("[0]{0} {1} {2}",what, name, source, linedefined);
+        }
+       
     }
 
     public class LuaIndexes
@@ -234,6 +235,10 @@ namespace SparrowLuaProfiler
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate int lua_getinfo_fun(IntPtr luaState,string what, IntPtr ar);
         public static lua_getinfo_fun lua_getinfo { get; private set; }
+
+        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+        public delegate int lua_getstack_fun(IntPtr luaState, int level, IntPtr ar);
+        public static lua_getstack_fun lua_getstack { get; private set; }
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         public delegate void lua_settop_fun(IntPtr luaState, int top);
@@ -592,7 +597,10 @@ end
                 Utl.Log("lua_Allocator is null.");
                 return IntPtr.Zero;
             }
-            return lua_Allocator(ud, ptr, osize, nsize);
+            LuaProfiler.PreLuaMemoryAlloc(ptr, osize, nsize);
+            IntPtr buffer = lua_Allocator(ud, ptr, osize, nsize);
+            LuaProfiler.PostLuaMemoryAlloc(ptr, buffer, osize, nsize);
+            return buffer;
         }
 
         public static void BindEasyHook()
@@ -717,6 +725,14 @@ end
                 if (handle != IntPtr.Zero)
                 {
                     lua_getinfo = (lua_getinfo_fun)Marshal.GetDelegateForFunctionPointer(handle, typeof(lua_getinfo_fun));
+                }
+            }
+
+            {
+                IntPtr handle = GetProcAddress(moduleName, "lua_getstack");
+                if (handle != IntPtr.Zero)
+                {
+                    lua_getstack = (lua_getstack_fun)Marshal.GetDelegateForFunctionPointer(handle, typeof(lua_getstack_fun));
                 }
             }
 

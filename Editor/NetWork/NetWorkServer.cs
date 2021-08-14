@@ -58,7 +58,7 @@ namespace SparrowLuaProfiler
         private static Action<NetBase> m_onReceiveSample;
         private static Action<string> m_onClientConnected;
         private static Action m_onClientDisconnected;
-        private static Queue<int> m_cmdQueue = new Queue<int>(32);
+        private static Queue<Cmd> m_cmdQueue = new Queue<Cmd>(32);
 
         public static bool CheckIsReceiving()
         {
@@ -87,7 +87,7 @@ namespace SparrowLuaProfiler
         {
             if (tcpLister != null) return;
 
-            m_strCacheDict.Clear();
+            NetUtil.Clear();
 
             IPAddress myIP = IPAddress.Parse(ip);
             tcpLister = new TcpListener(myIP, port);
@@ -139,7 +139,7 @@ namespace SparrowLuaProfiler
             receiveThread = new Thread(DoReceiveMessage);
             receiveThread.Start();
 
-            SendCmd(0);
+            SendCmd(Cmd.handshake);
             // 启动一个线程来发送请求
             sendThread = new Thread(DoSendMessage);
             sendThread.Start();
@@ -154,17 +154,11 @@ namespace SparrowLuaProfiler
         /// 发送命令
         /// </summary>
         /// <param name="cmd"></param>
-        // 0 handshake,
-        // 1 开启hook
-        // 2 关闭hook
-        // 3 断开连接
-
-        // 100+ sample detail
-        public static void SendCmd(int cmd)
+        public static void SendCmd(int cmd, int arg = 0)
         {
             lock (m_cmdQueue)
             {
-                m_cmdQueue.Enqueue(cmd);
+                m_cmdQueue.Enqueue(new Cmd(cmd, arg));
             }
         }
 
@@ -195,7 +189,7 @@ namespace SparrowLuaProfiler
                                 {
                                     case 0: // sys info
                                         {
-                                            SysInfo s = DeserializeSysInfo(br);
+                                            SysInfo s = NetUtil.DeserializeSysInfo(br);
                                             if (m_onReceiveSample != null) 
                                             {
                                                 m_onReceiveSample(s);
@@ -205,7 +199,7 @@ namespace SparrowLuaProfiler
                                     case 1:  // sample 
                                         {
                                             long t1 = System.Diagnostics.Stopwatch.GetTimestamp(); 
-                                            Sample s = Deserialize(br);
+                                            Sample s = NetUtil.Deserialize(br);
                                             long t2 = System.Diagnostics.Stopwatch.GetTimestamp();
                                             if (m_onReceiveSample != null)
                                             {
@@ -217,7 +211,14 @@ namespace SparrowLuaProfiler
                                         break;
                                     case 2: // ref info
                                             break;
-                                    case 3: // diff info
+                                    case 3: // full memory info
+                                        {
+                                            LuaFullMemory luaFullMemory = NetUtil.DeserializeLuaFullMemory(br);
+                                            if (m_onReceiveSample != null) 
+                                            {
+                                                m_onReceiveSample(luaFullMemory);
+                                            }
+                                        }
                                         break;
                                 }
 
@@ -258,10 +259,10 @@ namespace SparrowLuaProfiler
                         {
                             while (m_cmdQueue.Count > 0)
                             {
-                                int msgId = -1;
-                                msgId = m_cmdQueue.Dequeue();
+                                Cmd cmd = m_cmdQueue.Dequeue();
                                 bw.Write(PACK_HEAD);
-                                bw.Write(msgId);
+                                bw.Write(cmd.msgId);
+                                bw.Write(cmd.arg);
                             }
                         }
                     }
@@ -337,132 +338,7 @@ namespace SparrowLuaProfiler
             if (m_onClientDisconnected != null) m_onClientDisconnected();
         }
 
-        private static Dictionary<int, string> m_strCacheDict = new Dictionary<int, string>(4096);
-
-        public static Sample Deserialize(BinaryReader br)
-        {
-            Sample s = null;
-
-            s = new Sample();
-            s.seq = br.ReadInt64();
-            s.currentTime = br.ReadInt64();
-            s.calls = br.ReadInt32();
-            s.costLuaGC = br.ReadInt32();
-            s.costMonoGC = br.ReadInt32();
-            s.name = ReadString(br);
-
-            s.costTime = br.ReadInt32();
-
-            int count = br.ReadUInt16();
-            for (int i = 0, imax = count; i < imax; i++)
-            {
-                Deserialize(br).fahter = s;
-            }
-
-            int lua_gc = 0;
-            int mono_gc = 0;
-            for (int i = 0, imax = s.childs.Count; i < imax; i++)
-            {
-                var item = s.childs[i];
-                lua_gc += item.costLuaGC;
-                mono_gc += item.costMonoGC;
-            }
-            s.costLuaGC = Math.Max(lua_gc, s.costLuaGC);
-            s.costMonoGC = Math.Max(mono_gc, s.costMonoGC);
-
-            return s;
-        }
-        public static SysInfo DeserializeSysInfo(BinaryReader br) 
-        {
-            byte b = br.ReadByte();
-            byte h = br.ReadByte();
-            return new SysInfo(b > 0, h > 0);
-        }
-
-        public static LuaRefInfo DeserializeRef(BinaryReader br)
-        {
-            LuaRefInfo refInfo = LuaRefInfo.Create();
-            refInfo.cmd = br.ReadByte();
-            refInfo.frameCount = br.ReadInt32();
-            refInfo.name = ReadString(br);
-            refInfo.addr = ReadString(br);
-            refInfo.type = br.ReadByte();
-
-            return refInfo;
-        }
-        public static LuaDiffInfo DeserializeDiff(BinaryReader br)
-        {
-            LuaDiffInfo diffInfo = LuaDiffInfo.Create();
-            int addCount = br.ReadInt32();
-            for (int i = 0; i < addCount; i++)
-            {
-                diffInfo.PushAddRef(ReadString(br), br.ReadInt32());
-            }
-            int addDetailCount = br.ReadInt32();
-            for (int i = 0; i < addDetailCount; i++)
-            {
-                string key = ReadString(br);
-                int count = br.ReadInt32();
-                for (int ii = 0; ii < count; ii++)
-                {
-                    diffInfo.PushAddDetail(key, ReadString(br));
-                }
-            }
-
-            int rmCount = br.ReadInt32();
-            for (int i = 0; i < rmCount; i++)
-            {
-                diffInfo.PushRmRef(ReadString(br), br.ReadInt32());
-            }
-            int rmDetailCount = br.ReadInt32();
-            for (int i = 0; i < rmDetailCount; i++)
-            {
-                string key = ReadString(br);
-                int count = br.ReadInt32();
-                for (int ii = 0; ii < count; ii++)
-                {
-                    diffInfo.PushRmDetail(key, ReadString(br));
-                }
-            }
-
-            int nullCount = br.ReadInt32();
-            for (int i = 0; i < nullCount; i++)
-            {
-                diffInfo.PushNullRef(ReadString(br), br.ReadInt32());
-            }
-            int nullDetailCount = br.ReadInt32();
-            for (int i = 0; i < nullDetailCount; i++)
-            {
-                string key = ReadString(br);
-                int count = br.ReadInt32();
-                for (int ii = 0; ii < count; ii++)
-                {
-                    diffInfo.PushNullDetail(key, ReadString(br));
-                }
-            }
-
-            return diffInfo;
-        }
-        public static string ReadString(BinaryReader br)
-        {
-            string result = null;
-
-            bool isRef = br.ReadByte() == 1 ? true : false;
-            int index = br.ReadInt16();
-            if (!isRef)
-            {
-                int len = br.ReadInt32();
-                byte[] datas = br.ReadBytes(len);
-                result = string.Intern(Encoding.UTF8.GetString(datas));
-                m_strCacheDict[index] = result;
-            }
-            else
-            {
-                result = m_strCacheDict[index];
-            }
-
-            return result;
-        }
+     
     }
 
 }

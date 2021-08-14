@@ -87,8 +87,7 @@ namespace SparrowLuaProfiler
                 m_client.Connect(host, port);
                 m_client.Client.SendTimeout = 1000;
                 //m_sampleDict.Clear();
-                m_strDict.Clear();
-                m_key = 0;
+               
                 ns = m_client.GetStream();
                 bw = new MBinaryWriter(ns);
                 br = new BinaryReader(ns);
@@ -141,7 +140,7 @@ namespace SparrowLuaProfiler
             }
             finally
             {
-                m_strDict.Clear();
+                NetUtil.Clear();
             }
 
         }
@@ -193,36 +192,41 @@ namespace SparrowLuaProfiler
                             int head = br.ReadInt32();
                             if (head == PACK_HEAD)
                             {
-                                int messageId = br.ReadInt32();
-                                Utl.Log(string.Format("receive message id:{0}", messageId));
-                                switch (messageId)
+                                int msgId = br.ReadInt32();
+                                int arg = br.ReadInt32();
+                                Utl.Log(string.Format("receive message id:{0} arg:{1}", msgId, arg));
+                                switch (msgId)
                                 {
-                                    case 0:
+                                    case Cmd.handshake:
                                         {
                                             // hand shake 
                                         }
                                         break;
-                                    case 1:
-                                    case 2:
+                                    case Cmd.disconnect: 
                                         {
-                                            Utl.Log("queue count:" + m_sampleQueue.Count);
+
+                                        }
+                                        break;
+                                    case Cmd.input:
+                                        {
                                             if (m_onReceiveCmd != null)
                                             {
-                                                m_onReceiveCmd(messageId);
+                                                m_onReceiveCmd(arg);
                                             }
                                         }
                                         break;
-                                    default:
+                                    case Cmd.seq:
                                         Sample sample = null;
-                                        if (m_samples.TryGetValue(messageId, out sample))
+                                        if (m_samples.TryGetValue(arg, out sample))
                                         {
                                             SendMessage(sample);
                                         }
                                         else 
                                         {
-                                            Utl.Log(string.Format("can't find sample:{0}", messageId));
+                                            Utl.Log(string.Format("can't find sample:{0}", msgId));
                                         }
                                         break;
+                                    default: break;
                                 }
                             }
                         }
@@ -274,12 +278,12 @@ namespace SparrowLuaProfiler
                         {
                             bw.Write((int)2);
                         }
-                        else if (s is LuaDiffInfo)
+                        else if (s is LuaFullMemory) 
                         {
                             bw.Write((int)3);
                         }
 
-                        Serialize(s, bw);
+                        NetUtil.Serialize(s, bw);
                         s.Restore();
 
                     }
@@ -299,150 +303,6 @@ namespace SparrowLuaProfiler
 
         }
 
-        private static int m_key = 0;
-        public static int GetUniqueKey()
-        {
-            return m_key++;
-        }
-        private static Dictionary<string, KeyValuePair<int, byte[]>> m_strDict = new Dictionary<string, KeyValuePair<int, byte[]>>(8192);
-        private static bool GetBytes(string s, out byte[] result, out int index)
-        {
-            bool ret = true;
-            KeyValuePair<int, byte[]> keyValuePair;
-            if (!m_strDict.TryGetValue(s, out keyValuePair))
-            {
-                result = Encoding.UTF8.GetBytes(s);
-                index = GetUniqueKey();
-                keyValuePair = new KeyValuePair<int, byte[]>(index, result);
-                m_strDict.Add(s, keyValuePair);
-                ret = false;
-            }
-            else
-            {
-                index = keyValuePair.Key;
-                result = keyValuePair.Value;
-            }
-
-            return ret;
-        }
-        private static void Serialize(NetBase o, BinaryWriter bw)
-        {
-            if (o is Sample)
-            {
-                Sample s = (Sample)o;
-
-                bw.Write(s.seq);
-                bw.Write(s.currentTime);
-                bw.Write(s.calls);
-                bw.Write(s.costLuaGC);
-                bw.Write(s.costMonoGC);
-                WriteString(bw, s.name);
-
-                bw.Write(s.costTime);
-
-                bw.Write((ushort)s.childs.Count);
-
-                var childs0 = s.childs;
-                for (int i0 = 0, i0max = childs0.Count; i0 < i0max; i0++)
-                {
-                    Serialize(childs0[i0], bw);
-                }
-            }
-            else if (o is SysInfo) 
-            {
-                SysInfo s = (SysInfo)o;
-                bw.Write(s.running ? (byte)1 : (byte)0);
-                bw.Write(s.hooked ? (byte)1 : (byte)0);
-            }
-            else if (o is LuaRefInfo)
-            {
-                LuaRefInfo r = (LuaRefInfo)o;
-
-                bw.Write(r.cmd);
-                WriteString(bw, r.name);
-                WriteString(bw, r.addr);
-                bw.Write(r.type);
-            }
-            else if (o is LuaDiffInfo)
-            {
-                LuaDiffInfo ld = (LuaDiffInfo)o;
-                // add
-                var addDict = ld.addRef;
-                bw.Write(addDict.Count);
-                foreach (var item in addDict)
-                {
-                    WriteString(bw, item.Key);
-                    bw.Write((int)item.Value);
-                }
-                var addDetail = ld.addDetail;
-                bw.Write(addDetail.Count);
-                foreach (var item in addDetail)
-                {
-                    WriteString(bw, item.Key);
-                    var list = item.Value;
-                    bw.Write(list.Count);
-                    foreach (var listItem in list)
-                    {
-                        WriteString(bw, listItem);
-                    }
-                }
-                // rm
-                var rmDict = ld.rmRef;
-                bw.Write(rmDict.Count);
-                foreach (var item in rmDict)
-                {
-                    WriteString(bw, item.Key);
-                    bw.Write((int)item.Value);
-                }
-                var rmDetail = ld.rmDetail;
-                bw.Write(rmDetail.Count);
-                foreach (var item in rmDetail)
-                {
-                    WriteString(bw, item.Key);
-                    var list = item.Value;
-                    bw.Write(list.Count);
-                    foreach (var listItem in list)
-                    {
-                        WriteString(bw, listItem);
-                    }
-                }
-
-                // null
-                var nullDict = ld.nullRef;
-                bw.Write(nullDict.Count);
-                foreach (var item in nullDict)
-                {
-                    WriteString(bw, item.Key);
-                    bw.Write((int)item.Value);
-                }
-                var nullDetail = ld.nullDetail;
-                bw.Write(nullDetail.Count);
-                foreach (var item in nullDetail)
-                {
-                    WriteString(bw, item.Key);
-                    var list = item.Value;
-                    bw.Write(list.Count);
-                    foreach (var listItem in list)
-                    {
-                        WriteString(bw, listItem);
-                    }
-                }
-            }
-        }
-
-        public static void WriteString(BinaryWriter bw, string name)
-        {
-            byte[] datas;
-            int index = 0;
-            bool isRef = GetBytes(name, out datas, out index);
-            bw.Write((byte)(isRef ? 1 : 0));
-            bw.Write((short)index);
-            if (!isRef)
-            {
-                bw.Write(datas.Length);
-                bw.Write(datas);
-            }
-        }
 
         #endregion
 

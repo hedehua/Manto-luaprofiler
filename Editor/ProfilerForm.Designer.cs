@@ -36,13 +36,13 @@ namespace SparrowLuaProfiler
             this.chart1 = new System.Windows.Forms.DataVisualization.Charting.Chart();
             this.chart2 = new System.Windows.Forms.DataVisualization.Charting.Chart();
             this.tvTaskList = new AdvancedDataGridView.TreeGridView();
-            this.memoryList = new AdvancedDataGridView.TreeGridView();
             this.imageStrip = new System.Windows.Forms.ImageList(this.components);
             this.injectButton = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.tips = new System.Windows.Forms.Label();
             this.processCom = new System.Windows.Forms.ComboBox();
             this.deattachBtn = new System.Windows.Forms.Button();
+            this.recordMemBox = new System.Windows.Forms.CheckBox();
             this.playBtn = new System.Windows.Forms.Button();
             this.pauseBtn = new System.Windows.Forms.Button();
             this.clearBtn = new System.Windows.Forms.Button();
@@ -61,13 +61,10 @@ namespace SparrowLuaProfiler
             this.totalTime = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.totalCalls = new System.Windows.Forms.DataGridViewTextBoxColumn();
             this.tabControl1 = new System.Windows.Forms.TabControl();
-            this.memoryview = new TreeGridColumn();
-            this.memoryAlloc = new System.Windows.Forms.DataGridViewTextBoxColumn();
+
             this.tabPage1 = new System.Windows.Forms.TabPage();
-            this.tabPage2 = new System.Windows.Forms.TabPage();
 
             ((System.ComponentModel.ISupportInitialize)(this.tvTaskList)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.memoryList)).BeginInit();
             this.SuspendLayout();
             // 
             // injectButton
@@ -110,11 +107,22 @@ namespace SparrowLuaProfiler
             this.deattachBtn.UseVisualStyleBackColor = true;
             this.deattachBtn.Click += new System.EventHandler(this.deattachBtn_Click);
 
+            // 
+            // recordMemBox
+            // 
+            this.recordMemBox.Enabled = false;
+            this.recordMemBox.Location = new System.Drawing.Point(389, 3);
+            this.recordMemBox.Name = "recordMemBox";
+            this.recordMemBox.Size = new System.Drawing.Size(100, 30);
+            this.recordMemBox.Text = "记录内存分配";
+            this.recordMemBox.UseVisualStyleBackColor = true;
+            this.recordMemBox.CheckedChanged += recordMemBox_Changed;
+
             ///
             // playBtn
             ///
             this.playBtn.Enabled = false;
-            this.playBtn.Location = new System.Drawing.Point(389, 3);
+            this.playBtn.Location = new System.Drawing.Point(489, 3);
             this.playBtn.Name = "playBtn";
             this.playBtn.Size = new System.Drawing.Size(84, 23);
             this.playBtn.TabIndex = 5;
@@ -126,7 +134,7 @@ namespace SparrowLuaProfiler
             // pauseBtn
             ///
             this.pauseBtn.Enabled = false;
-            this.pauseBtn.Location = new System.Drawing.Point(479, 3);
+            this.pauseBtn.Location = new System.Drawing.Point(579, 3);
             this.pauseBtn.Name = "playBtn";
             this.pauseBtn.Size = new System.Drawing.Size(84, 23);
             this.pauseBtn.TabIndex = 5;
@@ -137,8 +145,8 @@ namespace SparrowLuaProfiler
             ///
             // captureBt
             ///
-            this.captureBtn.Enabled = true;
-            this.captureBtn.Location = new System.Drawing.Point(589, 3);
+            this.captureBtn.Enabled = false;
+            this.captureBtn.Location = new System.Drawing.Point(689, 3);
             this.captureBtn.Name = "captureBtn";
             this.captureBtn.Size = new System.Drawing.Size(84, 23);
             //this.captureBtn.TabIndex = 5;
@@ -149,7 +157,7 @@ namespace SparrowLuaProfiler
             ///
             // markBtn
             ///
-            this.markBtn.Enabled = true;
+            this.markBtn.Enabled = false;
             this.markBtn.Location = new System.Drawing.Point(1075, 3);
             this.markBtn.Name = "markBtn";
             this.markBtn.Size = new System.Drawing.Size(84, 23);
@@ -160,7 +168,7 @@ namespace SparrowLuaProfiler
             ///
             // memDiffBtn
             ///
-            this.memoryDiffBtn.Enabled = true;
+            this.memoryDiffBtn.Enabled = false;
             this.memoryDiffBtn.Location = new System.Drawing.Point(1165, 3);
             this.memoryDiffBtn.Name = "memoryDiffBtn";
             this.memoryDiffBtn.Size = new System.Drawing.Size(84, 23);
@@ -347,14 +355,14 @@ namespace SparrowLuaProfiler
             // tabControl1
             // 
             this.tabControl1.Controls.Add(this.tabPage1);
-            this.tabControl1.Controls.Add(this.tabPage2);
             this.tabControl1.Location = new System.Drawing.Point(0, 288);
             this.tabControl1.Name = "tabControl1";
             this.tabControl1.SelectedIndex = 0;
             this.tabControl1.Size = new System.Drawing.Size(1416, 436);
             this.tabControl1.Anchor = System.Windows.Forms.AnchorStyles.Left | System.Windows.Forms.AnchorStyles.Right | System.Windows.Forms.AnchorStyles.Top ;
             this.tabControl1.TabIndex = 0;
-            
+            this.tabControl1.SelectedIndexChanged += TabControl_SelectedIndexChanged;
+
             // 
             // tabPage1
             // 
@@ -362,18 +370,9 @@ namespace SparrowLuaProfiler
             this.tabPage1.Name = "tabPage1";
             this.tabPage1.Padding = new System.Windows.Forms.Padding(0);
             this.tabPage1.TabIndex = 0;
-            this.tabPage1.Text = "cpu";
+            this.tabPage1.Text = "Runtime";
             this.tabPage1.UseVisualStyleBackColor = true;
-            // 
-            // tabPage2
-            // 
-            this.tabPage2.Location = new System.Drawing.Point(1, 22);
-            this.tabPage2.Name = "tabPage2";
-            this.tabPage2.Padding = new System.Windows.Forms.Padding(0);
-            this.tabPage2.TabIndex = 1;
-            this.tabPage2.Text = "memory";
-            this.tabPage2.UseVisualStyleBackColor = true;
-
+           
 
             // tvTaskList
             // 
@@ -407,34 +406,6 @@ namespace SparrowLuaProfiler
             this.tvTaskList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
             this.tvTaskList.Size = new System.Drawing.Size(200, 410);
             this.tvTaskList.TabIndex = 0;
-
-            ///
-            /// memorylist
-            /// 
-            this.memoryList.AllowUserToAddRows = false;
-            this.memoryList.AllowUserToDeleteRows = false;
-            this.memoryList.AllowUserToOrderColumns = true;
-            this.memoryList.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-            this.memoryList.AutoSizeColumnsMode = System.Windows.Forms.DataGridViewAutoSizeColumnsMode.Fill;
-            this.memoryList.BackgroundColor = System.Drawing.Color.White;
-            this.memoryList.CellBorderStyle = System.Windows.Forms.DataGridViewCellBorderStyle.None;
-            this.memoryList.ColumnHeadersHeight = 20;
-            this.memoryList.Columns.AddRange(new System.Windows.Forms.DataGridViewColumn[] {
-            this.memoryview,
-            this.memoryAlloc});
-            this.memoryList.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
-            this.memoryList.ImageList = null;
-            this.memoryList.Location = new System.Drawing.Point(0, 0);
-            this.memoryList.Name = "memoryList";
-            this.memoryList.RowHeadersVisible = false;
-            this.memoryList.RowHeadersWidth = 20;
-
-            this.memoryList.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.memoryList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.memoryList.Size = new System.Drawing.Size(200, 410);
-            this.memoryList.TabIndex = 0;
 
 
             // 
@@ -495,24 +466,7 @@ namespace SparrowLuaProfiler
             this.totalCalls.Name = "totalCalls";
             this.totalCalls.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
 
-            // 
-            // overview
-            // 
-            this.memoryview.DefaultNodeImage = null;
-            this.memoryview.FillWeight = 450F;
-            this.memoryview.HeaderText = "OverView";
-            this.memoryview.MaxInputLength = 3000;
-            this.memoryview.Name = "overview";
-            this.memoryview.Resizable = System.Windows.Forms.DataGridViewTriState.True;
-            this.memoryview.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-
-            // 
-            // totalCalls
-            // 
-            this.memoryAlloc.HeaderText = "Alloc";
-            this.memoryAlloc.Name = "memoryAlloc";
-            this.memoryAlloc.SortMode = System.Windows.Forms.DataGridViewColumnSortMode.NotSortable;
-
+         
             // 
             // ProfilerForm
             // 
@@ -526,6 +480,7 @@ namespace SparrowLuaProfiler
             //this.Controls.Add(this.searchBox);
             this.Controls.Add(this.deattachBtn);
             this.Controls.Add(this.processCom);
+            this.Controls.Add(this.recordMemBox);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.injectButton);
             this.Controls.Add(this.playBtn);
@@ -536,11 +491,11 @@ namespace SparrowLuaProfiler
             this.Controls.Add(this.chart1);
             this.Controls.Add(this.chart2);
             this.Controls.Add(this.tvTaskList);
-            this.Controls.Add(this.memoryList);
+          //  this.Controls.Add(this.memoryList);
             this.Controls.Add(this.tips);
 
             this.tabPage1.Controls.Add(this.tvTaskList);
-            this.tabPage2.Controls.Add(this.memoryList);
+
 
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
@@ -548,7 +503,6 @@ namespace SparrowLuaProfiler
             this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "LuaProfiler";
             ((System.ComponentModel.ISupportInitialize)(this.tvTaskList)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.memoryList)).EndInit();
             this.ResumeLayout(false);
             this.PerformLayout();
 
@@ -557,13 +511,14 @@ namespace SparrowLuaProfiler
         #endregion
 
         private TreeGridView tvTaskList;
-        private TreeGridView memoryList;
+
         private System.Windows.Forms.ImageList imageStrip;
         private System.Windows.Forms.Button injectButton;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label tips;
         private System.Windows.Forms.ComboBox processCom;
         private System.Windows.Forms.Button deattachBtn;
+        private System.Windows.Forms.CheckBox recordMemBox;
         private System.Windows.Forms.Button playBtn;
         private System.Windows.Forms.Button pauseBtn;
         private System.Windows.Forms.Button captureBtn;
@@ -581,9 +536,6 @@ namespace SparrowLuaProfiler
         private System.Windows.Forms.DataGridViewImageColumn attachmentColumn;
         private TreeGridColumn overview;
 
-        private TreeGridColumn memoryview;
-        private System.Windows.Forms.DataGridViewTextBoxColumn memoryAlloc;
-
         private System.Windows.Forms.DataGridViewTextBoxColumn luaGC;
         private System.Windows.Forms.DataGridViewTextBoxColumn monoGC;
         private System.Windows.Forms.DataGridViewTextBoxColumn averageTime;
@@ -591,7 +543,6 @@ namespace SparrowLuaProfiler
         private System.Windows.Forms.DataGridViewTextBoxColumn totalCalls;
         private System.Windows.Forms.TabControl tabControl1;
         private System.Windows.Forms.TabPage tabPage1;
-        private System.Windows.Forms.TabPage tabPage2;
        
         
     }

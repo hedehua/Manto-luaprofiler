@@ -35,7 +35,9 @@ __________#_______####_______####______________
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Runtime.InteropServices;
+using System.IO;
 
 namespace SparrowLuaProfiler
 {
@@ -55,32 +57,138 @@ namespace SparrowLuaProfiler
         #region property
         private static IntPtr m_mainL = IntPtr.Zero;
 
-        public static void OnLuaStateCreated(IntPtr luastate) 
+        public static bool memory_hooked = false;
+        private static Dictionary<long, LuaRefInfo> luaRefInfoMap = new Dictionary<long, LuaRefInfo>();
+
+        public static void BeginPlay()
+        {
+            NetWorkClient.RegisterOnReceiveCmd(OnReceiveCmd);
+            SendSysInfo();
+        }
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="buffer">若当前为alloc操作，buffer为新分配的地址，若当前为free,则为空</param>
+        /// <param name="ptr">为旧的地址</param>
+        /// <param name="osize"></param>
+        /// <param name="nsize"></param>
+        /// 
+
+        public static void PreLuaMemoryAlloc(IntPtr ptr, long osize, long nsize) 
+        {
+        }
+
+        public static void PostLuaMemoryAlloc( IntPtr ptr, IntPtr buffer, long osize, long nsize)
+        {
+       //     Utl.Log(string.Format("ptr:{0} buffer:{1} osize:{2} nsize:{3}", ptr, buffer, osize, nsize));
+            if (!memory_hooked) return;
+            if (m_mainL == IntPtr.Zero) return;
+            if (osize == 0 && nsize == 0) return;
+            lock (luaRefInfoMap)
+            {
+                try
+                {
+                    // free object,remove ptr from cache
+                    LuaRefInfo refInfo;
+                    bool contains = luaRefInfoMap.TryGetValue(ptr.ToInt64(), out refInfo);
+                    if (contains)
+                    {
+                        luaRefInfoMap.Remove(ptr.ToInt64());
+                        refInfo.Restore();
+                    }
+                    if (nsize == 0)
+                    {
+                        return;
+                    }
+
+                    // get call stack
+                    refInfo = LuaRefInfo.Create();
+                    refInfo.size = (int)nsize;
+                    refInfo.addr = buffer.ToInt64();
+                    lua_Debug debug = new lua_Debug();
+                    IntPtr ar = Marshal.AllocHGlobal(Marshal.SizeOf(debug));
+                    Marshal.StructureToPtr(debug, ar, false);
+                    if (LuaDLL.lua_getstack(m_mainL, 0, ar) > 0 && LuaDLL.lua_getinfo(m_mainL, "nS", ar) > 0)
+                    {
+                        refInfo.name = debug.ToString();
+                    }
+                    else
+                    {
+                        refInfo.name = "unknown";
+                    }
+                    Marshal.FreeHGlobal(ar);
+                    luaRefInfoMap.Add(refInfo.addr, refInfo);
+
+                }
+                catch (Exception e)
+                {
+                    Utl.Log(string.Format("Alloc Exception: {0}", e.ToString()));
+                }
+            }
+        }
+
+        public static void OnLuaStateCreated(IntPtr luastate)
         {
             if (luastate != IntPtr.Zero)
             {
                 m_mainThreadId = System.Threading.Thread.CurrentThread.ManagedThreadId;
             }
             m_mainL = luastate;
-            NetWorkClient.RegisterOnReceiveCmd(OnReceiveCmd);
             SendSysInfo();
         }
 
-        private static void OnReceiveCmd(int cmd) 
+        private static void OnReceiveCmd(int arg)
         {
-            if (cmd == 1) 
+            switch (arg)
             {
-                SetHook(m_mainL, true);
+                case 0:
+
+                    {
+                        if (m_mainL != IntPtr.Zero)
+                        {
+                            SetHook(m_mainL, false);
+                        }
+
+                    }
+                    break;
+                case 1:
+                    {
+                        if (m_mainL != IntPtr.Zero)
+                        {
+                            SetHook(m_mainL, true);
+                        }
+                    }
+                    break;
+                case 2:
+                    {
+                        memory_hooked = false;
+                    }
+                    break;
+                case 3:
+                    {
+                        memory_hooked = true;
+                    }
+                    break;
+                case 4:
+                    {
+                        if (m_mainL == IntPtr.Zero) 
+                        {
+                            Utl.Log("capture memory failure, lua state has not beed created.");
+                            return;
+                        }
+                        SendMemoryReport();
+                    }
+                    break;
+                default: break;
             }
-            if (cmd == 2) 
-            {
-                SetHook(m_mainL, false);
-            }
+
             SendSysInfo();
         }
-        public static void OnLuaStateClosed(IntPtr luaState) 
+        public static void OnLuaStateClosed(IntPtr luaState)
         {
-            if (luaState != m_mainL) 
+            if (luaState != m_mainL)
             {
                 Utl.Log("luastate Closed ,but it's not main state");
                 return;
@@ -88,17 +196,40 @@ namespace SparrowLuaProfiler
             hook_func = null;
             m_mainL = IntPtr.Zero;
             m_mainThreadId = 0;
-            NetWorkClient.UnRegistReceive();
             SendSysInfo();
         }
-        public static void SendSysInfo() 
+
+        public static void SendMemoryReport() 
         {
-            Utl.Log(string.Format("send sysinfo: luastate:{0} {1}", IsMainLCreated, CheckHook()));
-            NetWorkClient.SendMessage(new SysInfo(IsMainLCreated, CheckHook()));
+
+            // 1. write to local file
+            string fullPath = string.Format("{0}/memory-{1}.luam", Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments), DateTime.Now.ToString("yyyy.MM.dd-hh.mm.ss"));
+            FileStream fs = new FileStream(fullPath, FileMode.Create);
+            MBinaryWriter bw = new MBinaryWriter(fs);
+            lock (luaRefInfoMap)
+            {
+                bw.Write(luaRefInfoMap.Count);      // header <int> count;
+                foreach (var item in luaRefInfoMap)
+                {
+                    NetUtil.Serialize(item.Value, bw);
+                }
+            }
+            fs.Close();
+
+            // 2. send to remote
+            LuaFullMemory luaFullMemory = new LuaFullMemory(fullPath);
+            NetWorkClient.SendMessage(luaFullMemory);
+            Utl.Log(string.Format("SendMemoryReport size: {0} {1}", luaRefInfoMap.Count, fullPath));
+        }
+
+        public static void SendSysInfo()
+        {
+            Utl.Log(string.Format("SendSysInfo: luastate:{0} hook:{1} memory:{2}", IsMainLCreated, CheckHook(), memory_hooked));
+            NetWorkClient.SendMessage(new SysInfo(IsMainLCreated, CheckHook(), memory_hooked));
         }
 
         private static LuaDLL.lua_Hook_fun hook_func = null;
-        public static bool CheckHook() 
+        public static bool CheckHook()
         {
             if (m_mainL == IntPtr.Zero) return false;
             if (hook_func == null) return false;
@@ -125,19 +256,13 @@ namespace SparrowLuaProfiler
             {
                 long currentTime = LuaProfiler.getcurrentTime;
 
-                int ret = LuaDLL.lua_getinfo(luaState, "nS", ar);
-                if (ret == 0)
-                {
-                    Utl.Log("lua_getinfo:" + ret);
-                    return;
-                }
+                Debug.Assert(LuaDLL.lua_getinfo(luaState, "nS", ar) > 0);
 
                 lua_Debug debug = (lua_Debug)Marshal.PtrToStructure(ar, typeof(lua_Debug));
                 switch (debug.evt)
                 {
                     case LuaDLL.LUA_HOOKCALL:
-                        string message = string.Format("{0} {1} {2}", debug.name, debug.source, debug.linedefined/*, debug.namewhat*/ );
-                        BeginSample(luaState, message, currentTime);
+                        BeginSample(luaState, debug.ToString(), currentTime);
                         break;
                     case LuaDLL.LUA_HOOKRET:
                         EndSample(luaState, currentTime);
@@ -178,8 +303,8 @@ namespace SparrowLuaProfiler
                 return System.Diagnostics.Stopwatch.GetTimestamp();
             }
         }
-       
-        public static void BeginSample(IntPtr luaState, string name, long currentTime) 
+
+        public static void BeginSample(IntPtr luaState, string name, long currentTime)
         {
             if (!IsMainThread)
             {
@@ -197,8 +322,8 @@ namespace SparrowLuaProfiler
             {
             }
         }
-    
-        public static void EndSample(IntPtr luaState, long currentTime) 
+
+        public static void EndSample(IntPtr luaState, long currentTime)
         {
             if (!IsMainThread)
             {
@@ -242,9 +367,9 @@ namespace SparrowLuaProfiler
             sample.fahter = beginSampleMemoryStack.Count > 0 ? beginSampleMemoryStack.Peek() : null;
 
             bool stackExhausted = beginSampleMemoryStack.Count == 0;
-            if(stackExhausted)
+            if (stackExhausted)
             {
-                sample.Refix(); 
+                sample.Refix();
             }
             // 该尽可能靠后，以统计更多的内部消耗
             sample.costTime = (int)(getcurrentTime - sample.currentTime);
