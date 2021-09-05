@@ -289,14 +289,15 @@ namespace SparrowLuaProfiler
         double maxMemAlloc = 0;
         private void FillTimeline()
         {
-            string name = "All";
-            Series cpuSeries = this.chart1.Series[name];
-            Series memSeries = this.chart2.Series[name];
+            string name1 = "cpu";
+            string name2 = "mem";
+            Series cpuSeries = this.chart1.Series[name1];
+            Series memSeries = this.chart1.Series[name2];
             // 少画一个，保证数据已经全部填充
             for (; lastPaintIndex < frames.Count - 1; lastPaintIndex++) 
             {
                 Frame frame = frames[lastPaintIndex];
-                double costTime = GetFrameCostTime(frame, name);
+                double costTime = GetFrameCostTime(frame, name1);
                 cpuSeries.Points.AddXY(lastPaintIndex, costTime);
                 maxCostTime = costTime > maxCostTime ? costTime : maxCostTime;
 
@@ -307,16 +308,16 @@ namespace SparrowLuaProfiler
 
         }
 
-        private double GetMemAlloc(Frame frame) 
+        private long GetMemAlloc(Frame frame) 
         {
             MList<Sample> samples = frame.GetSamples();
-            int alloc = 0;
+            long alloc = 0;
             for (int i = 0; i < samples.Count; i++)
             {
                 Sample sample = samples[i];
                 alloc += sample.costLuaGC;
             }
-            return alloc / (double)MaxB;
+            return alloc;// / (double)MaxB;
         }
 
         private double GetFrameCostTime(Frame frame, string name = null)
@@ -326,7 +327,7 @@ namespace SparrowLuaProfiler
             for (int i = 0; i < samples.Count; i++) 
             {
                 Sample sample = samples[i];
-                if (name == "All" || sample.name == name)
+                if (name == "cpu" || sample.name == name)
                 {
                     costTime += sample.costTime;
                 }
@@ -558,7 +559,7 @@ namespace SparrowLuaProfiler
             currentPageMemoryInfos.Clear();
 
             chart1.Series.Clear();
-            chart2.Series.Clear();
+            //chart2.Series.Clear();
 
             ClearFrameInfo();
             ClearAllPages();
@@ -833,17 +834,17 @@ namespace SparrowLuaProfiler
             pointIndexOnMouseOver = e.HitTestResult.PointIndex;
             if (e.HitTestResult.ChartElementType == ChartElementType.DataPoint)
             {
-                DataPoint dp = e.HitTestResult.Series.Points[pointIndexOnMouseOver];
-                if (chart.Name == "cpuChart")
+                if (selectedFrameIndex > 0 && selectedFrameIndex < frames.Count) 
                 {
-                    e.Text = string.Format("Frame: {0}\nDuration: {1:F3}ms", dp.XValue, dp.YValues[0]);
-                }
-                else
-                {
-                    e.Text = string.Format("Frame: {0}\nAlloc: {1:F3}", dp.XValue, GetMemoryString((long)dp.YValues[0] * MaxB));
+                    Frame frame = frames[selectedFrameIndex];
+                    long mem = GetMemAlloc(frame);
+                    double cpu = GetFrameCostTime(frame);
+                    DataPoint dp = e.HitTestResult.Series.Points[pointIndexOnMouseOver];
+                    e.Text = string.Format("Frame: {0}\nDuration: {1:F3}ms\nAlloc: {2:F3}", dp.XValue, cpu, GetMemoryString(mem));
                 }
                 
             }
+            
         }
 
         private void Chart1_MouseClick(object sender, MouseEventArgs e) 

@@ -34,7 +34,7 @@ namespace SparrowLuaProfiler
             System.Windows.Forms.DataGridViewCellStyle dataGridViewCellStyle1 = new System.Windows.Forms.DataGridViewCellStyle();
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(ProfilerForm));
             this.chart1 = new System.Windows.Forms.DataVisualization.Charting.Chart();
-            this.chart2 = new System.Windows.Forms.DataVisualization.Charting.Chart();
+         //   this.chart2 = new System.Windows.Forms.DataVisualization.Charting.Chart();
             this.tvTaskList = new AdvancedDataGridView.TreeGridView();
             this.imageStrip = new System.Windows.Forms.ImageList(this.components);
             this.injectButton = new System.Windows.Forms.Button();
@@ -232,9 +232,9 @@ namespace SparrowLuaProfiler
             this.chart1.Location = new System.Drawing.Point(0, 0);
             this.chart1.Name = "cpuChart";
             this.chart1.Size = new System.Drawing.Size(1416, 128);
-            this.chart1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
+            //this.chart1.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
+            //| System.Windows.Forms.AnchorStyles.Left)
+            //| System.Windows.Forms.AnchorStyles.Right)));
 
             System.Windows.Forms.DataVisualization.Charting.ChartArea area = this.chart1.ChartAreas.Add("ChartArea");
     
@@ -277,9 +277,22 @@ namespace SparrowLuaProfiler
             area.AxisY.TitleAlignment = System.Drawing.StringAlignment.Center;
             area.AxisY.Title = "Cpu(ms)";
 
+            area.AxisY2.MajorGrid.LineColor = System.Drawing.Color.LightGray;
+            area.AxisY2.MinorGrid.LineColor = System.Drawing.Color.LightGray;
+            area.AxisY2.LabelStyle.Enabled = true;
+            area.AxisY2.IsMarginVisible = false;
+            area.AxisY2.Minimum = 0.0f;
+            area.AxisY2.Maximum = 2048.0f;
+            area.AxisY2.ScaleView.Zoomable = true;
+            area.AxisY2.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.DecreaseFont;
+            area.AxisY2.IsLabelAutoFit = false;
+            area.AxisY2.LabelStyle.Format = "{00.00}";
+            area.AxisY2.TitleAlignment = System.Drawing.StringAlignment.Center;
+            area.AxisY2.Title = "Memory(B)";
+
             System.Random random = new System.Random();
 
-            System.Windows.Forms.DataVisualization.Charting.Series series = this.chart1.Series.Add("All");
+            System.Windows.Forms.DataVisualization.Charting.Series series = this.chart1.Series.Add("cpu");
             series.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Column;
             series.IsValueShownAsLabel = true;
             series.MarkerStyle = System.Windows.Forms.DataVisualization.Charting.MarkerStyle.None;
@@ -287,68 +300,19 @@ namespace SparrowLuaProfiler
             series.BorderWidth = 1;
             series.IsXValueIndexed = true;
             series.IsValueShownAsLabel = false;
+            series.YAxisType = System.Windows.Forms.DataVisualization.Charting.AxisType.Primary;
 
-            /// 
-            /// chart2
-            /// ///
-            this.chart2.Location = new System.Drawing.Point(0, 148);
-            this.chart2.Name = "memChart";
-            this.chart2.Size = new System.Drawing.Size(1416, 128);
-
-            this.chart2.Anchor = ((System.Windows.Forms.AnchorStyles)((((System.Windows.Forms.AnchorStyles.Top)
-            | System.Windows.Forms.AnchorStyles.Left)
-            | System.Windows.Forms.AnchorStyles.Right)));
-
-            area = this.chart2.ChartAreas.Add("ChartArea");
-
-            this.chart2.MouseWheel += Chart1_MouseWheel;
-            this.chart2.MouseClick += Chart1_MouseClick;
-            this.chart2.GetToolTipText += Chart1_GetToolTipText;
-
-            area.InnerPlotPosition.Auto = true;
-            area.IsSameFontSizeForAllAxes = true;
-
-            area.CursorX.AutoScroll = true;
-            area.CursorX.IsUserEnabled = true;
-            area.CursorX.IsUserSelectionEnabled = false;
-
-            area.AxisX.MinorGrid.LineColor = System.Drawing.Color.LightGray;
-            area.AxisX.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-
-            area.AxisX.ScaleView.Zoomable = true;
-            area.AxisX.ScaleView.Position = 0;
-            area.AxisX.ScaleView.Size = 100;
-            area.AxisX.Minimum = 0.0f;
-
-            area.AxisX.ScrollBar.Enabled = true;
-            area.AxisX.ScrollBar.ButtonColor = System.Drawing.Color.LightGray;
-            area.AxisX.ScrollBar.Size = 12;
-            area.AxisX.ScrollBar.ButtonStyle = System.Windows.Forms.DataVisualization.Charting.ScrollBarButtonStyles.None;
-            area.AxisX.ScrollBar.IsPositionedInside = true;
-            area.AxisX.LabelStyle.Enabled = false;
-
-            area.AxisY.MajorGrid.LineColor = System.Drawing.Color.LightGray;
-            area.AxisY.MinorGrid.LineColor = System.Drawing.Color.LightGray;
-            area.AxisY.LabelStyle.Enabled = true;
-            area.AxisY.IsMarginVisible = false;
-            area.AxisY.Minimum = 0.0f;
-            area.AxisY.Maximum = 10.0f;
-            area.AxisY.ScaleView.Zoomable = true;
-            area.AxisY.LabelAutoFitStyle = System.Windows.Forms.DataVisualization.Charting.LabelAutoFitStyles.StaggeredLabels;
-            area.AxisY.IsLabelAutoFit = false;
-            area.AxisY.LabelStyle.Format = "{00.00}";
-            area.AxisY.TitleAlignment = System.Drawing.StringAlignment.Center;
-            area.AxisY.Title = "Memory(kb)";
-
-            series = this.chart2.Series.Add("All");
-            series.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Column;
+            series = this.chart1.Series.Add("mem");
+            series.ChartType = System.Windows.Forms.DataVisualization.Charting.SeriesChartType.Line;
             series.IsValueShownAsLabel = true;
             series.MarkerStyle = System.Windows.Forms.DataVisualization.Charting.MarkerStyle.None;
-            series.Color = System.Drawing.Color.FromArgb(255, 116, 175, 104);
+            series.Color = System.Drawing.Color.FromArgb(255, 255, 155, 104);
             series.BorderWidth = 1;
             series.IsXValueIndexed = true;
             series.IsValueShownAsLabel = false;
+            series.YAxisType = System.Windows.Forms.DataVisualization.Charting.AxisType.Secondary;
 
+         
             // 
             // tabControl1
             // 
@@ -395,15 +359,14 @@ namespace SparrowLuaProfiler
             this.monoGC});
             this.tvTaskList.EditMode = System.Windows.Forms.DataGridViewEditMode.EditProgrammatically;
             this.tvTaskList.ImageList = null;
-            this.tvTaskList.Location = new System.Drawing.Point(0, 0);
             this.tvTaskList.Name = "tvTaskList";
             this.tvTaskList.RowHeadersVisible = false;
             this.tvTaskList.RowHeadersWidth = 20;
 
             this.tvTaskList.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
             this.tvTaskList.SelectionMode = System.Windows.Forms.DataGridViewSelectionMode.FullRowSelect;
-            this.tvTaskList.Location = new System.Drawing.Point(0, 288);
-            this.tvTaskList.Size = new System.Drawing.Size(196, 372);
+            this.tvTaskList.Location = new System.Drawing.Point(0, 140);
+            this.tvTaskList.Size = new System.Drawing.Size(196, 520);
             this.tvTaskList.TabIndex = 0;
 
 
@@ -487,13 +450,10 @@ namespace SparrowLuaProfiler
             this.Controls.Add(this.captureBtn);
             this.Controls.Add(this.memoryDiffBtn);
             this.Controls.Add(this.markBtn);
-        //    this.Controls.Add(this.chart1);
-        //    this.Controls.Add(this.chart2);
-        //    this.Controls.Add(this.tvTaskList);
+
             this.Controls.Add(this.tips);
 
             this.tabPage1.Controls.Add(this.chart1);
-            this.tabPage1.Controls.Add(this.chart2);
             this.tabPage1.Controls.Add(this.tvTaskList);
 
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedDialog;
@@ -531,7 +491,7 @@ namespace SparrowLuaProfiler
 
         private System.Windows.Forms.Timer timer1;
         private System.Windows.Forms.DataVisualization.Charting.Chart chart1;
-        private System.Windows.Forms.DataVisualization.Charting.Chart chart2;
+        //private System.Windows.Forms.DataVisualization.Charting.Chart chart2;
         private System.Windows.Forms.DataGridViewImageColumn attachmentColumn;
         private TreeGridColumn overview;
 
