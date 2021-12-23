@@ -597,7 +597,7 @@ end
                 Utl.Log("lua_Allocator is null.");
                 return IntPtr.Zero;
             }
-            LuaProfiler.PreLuaMemoryAlloc(ptr, osize, nsize);
+            //LuaProfiler.PreLuaMemoryAlloc(ptr, osize, nsize);
             IntPtr buffer = lua_Allocator(ud, ptr, osize, nsize);
             LuaProfiler.PostLuaMemoryAlloc(ptr, buffer, osize, nsize);
             return buffer;
